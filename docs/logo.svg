@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="120" viewBox="0 0 520 120" role="img" aria-labelledby="t">
+  <title id="t">Active News</title>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff9a3c"/>
+      <stop offset="1" stop-color="#ff453a"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="112" height="112" rx="28" fill="#000" stroke="#2a2a2a" stroke-width="2"/>
+  <!-- live signal: a dot with broadcast rings -->
+  <circle cx="60" cy="60" r="11" fill="url(#g)"/>
+  <path d="M39 39a30 30 0 0 0 0 42M81 39a30 30 0 0 1 0 42" fill="none" stroke="url(#g)" stroke-width="6" stroke-linecap="round" opacity=".85"/>
+  <path d="M27 27a47 47 0 0 0 0 66M93 27a47 47 0 0 1 0 66" fill="none" stroke="url(#g)" stroke-width="6" stroke-linecap="round" opacity=".45"/>
+  <text x="140" y="74" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700" fill="#888" letter-spacing="-1">
+    <tspan fill="#ff453a">Active</tspan> News
+  </text>
+</svg>
