@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "scrapling": {
+      "command": ".venv/bin/scrapling",
+      "args": ["mcp"]
+    }
+  }
+}

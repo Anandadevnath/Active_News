@@ -1,0 +1,15 @@
+{
+  "name": "active-news",
+  "private": true,
+  "workspaces": ["server", "web"],
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c blue,green \"npm:dev -w server\" \"npm:dev -w web\"",
+    "start": "concurrently -k -n server,web -c blue,green \"npm:start -w server\" \"npm:start -w web\"",
+    "build": "npm run build -w web",
+    "test": "npm test -w server",
+    "typecheck": "npm run typecheck -w server && npx -w web tsc --noEmit"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
