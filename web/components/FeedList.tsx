@@ -9,6 +9,35 @@ import { PLATFORM_LABEL, type Filter, type NewsItem, type SearchPage } from "@/l
 import { NewsCard } from "./NewsCard";
 
 const PAGE_SIZE = 30;
+const GRID = "grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] items-stretch gap-x-6 gap-y-10";
+const BAR = "rounded-full bg-white/[0.07]";
+
+/** Placeholder with the same slots and sizes as NewsCard, so nothing jumps when stories arrive. */
+function SkeletonCard() {
+  return (
+    <div aria-hidden="true" className="flex flex-col gap-3 border-t-2 border-white/10 pt-3 motion-safe:animate-pulse">
+      <div className="flex h-[16.5px] items-center gap-2">
+        <div className={`h-2.5 w-20 ${BAR}`} />
+        <div className={`ml-auto h-1 w-14 ${BAR}`} />
+      </div>
+      <div className="aspect-video w-full rounded-2xl bg-white/[0.05] ring-1 ring-white/10" />
+      <div className="flex min-h-[71.25px] flex-col justify-center gap-2.5">
+        <div className={`h-4 w-full ${BAR}`} />
+        <div className={`h-4 w-11/12 ${BAR}`} />
+        <div className={`h-4 w-2/3 ${BAR}`} />
+      </div>
+      <div className="flex min-h-[45.5px] flex-col justify-center gap-2">
+        <div className={`h-3 w-full ${BAR}`} />
+        <div className={`h-3 w-4/5 ${BAR}`} />
+      </div>
+      <div className="mt-auto box-content flex h-4 items-center gap-3 border-t border-dashed border-white/10 pt-2">
+        <div className={`h-2.5 w-20 ${BAR}`} />
+        <div className={`h-2.5 w-10 ${BAR}`} />
+        <div className={`h-2.5 w-16 ${BAR}`} />
+      </div>
+    </div>
+  );
+}
 const MAX_EMPTY_PAGES = 5; // stop auto-skipping after this many pages of already-seen stories
 const SEEN_FLUSH_MS = 3000;
 const SEEN_VISIBLE_RATIO = 0.6;
@@ -145,9 +174,9 @@ export function FeedList({ filter, query, includeSeen, now, onPlayingChange, onS
       )}
 
       {initialLoading && (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] items-stretch gap-x-6 gap-y-10" aria-busy="true" aria-label="Loading stories">
+        <div className={GRID} aria-busy="true" aria-label="Loading stories">
           {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} className="h-[400px] rounded-2xl border border-white/5 bg-white/5 backdrop-blur-xl motion-safe:animate-pulse" />
+            <SkeletonCard key={i} />
           ))}
         </div>
       )}
@@ -155,7 +184,7 @@ export function FeedList({ filter, query, includeSeen, now, onPlayingChange, onS
       {items.length > 0 && (
         <>
           <h2 className="mb-4 flex items-center gap-3 text-xs font-bold tracking-[0.14em] text-zinc-400 uppercase after:h-px after:flex-1 after:bg-white/10">{isSearch ? `Results for “${query}”` : "Being discussed"}</h2>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] items-stretch gap-x-6 gap-y-10">
+          <div className={GRID}>
             {items.map((item) => (
               <NewsCard key={item.id} item={item} now={now} fresh={false} cardRef={observeCard} onPlayingChange={onPlayingChange} />
             ))}
@@ -172,7 +201,16 @@ export function FeedList({ filter, query, includeSeen, now, onPlayingChange, onS
             </button>
           </p>
         ) : hasMore ? (
-          items.length > 0 && <p className="font-serif text-zinc-500 italic motion-safe:animate-pulse">Loading more stories…</p>
+          items.length > 0 && (
+            <>
+              <div className={`${GRID} text-left`}>
+                {Array.from({ length: 3 }, (_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+              <p className="sr-only">Loading more stories…</p>
+            </>
+          )
         ) : caughtUp ? (
           <p>
             You are all caught up. {hiddenCount} stories you already saw are hidden.{" "}
