@@ -21,8 +21,8 @@ export interface SourceDef {
 export const SOURCES: Record<Platform, SourceDef> = {
   hackernews: { fetch: fetchHackerNews, search: searchHackerNews, intervalMs: 2 * MINUTE },
   "4chan": { fetch: fetchFourchan, intervalMs: 2 * MINUTE, replaceOnRefresh: true },
-  reddit: { fetch: fetchReddit, search: searchReddit, intervalMs: 3 * MINUTE },
+  reddit: { fetch: fetchReddit, search: searchReddit, intervalMs: 10 * MINUTE }, // fallback spends Exa web-search quota
   youtube: { fetch: fetchYouTube, search: searchYouTube, intervalMs: 5 * MINUTE },
   twitter: { fetch: fetchTwitter, search: searchTwitter, intervalMs: 5 * MINUTE },
-  quora: { fetch: fetchQuora, intervalMs: 15 * MINUTE },
+  quora: { fetch: fetchQuora, intervalMs: 30 * MINUTE }, // fallback spends Exa credit
 };

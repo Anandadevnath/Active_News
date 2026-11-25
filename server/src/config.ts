@@ -4,6 +4,10 @@ import path from "node:path";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const VENV_BIN = path.join(ROOT, ".venv", "bin");
+const ENV_FILE = path.join(ROOT, "server", ".env");
+
+// Tests never read it, so they cannot call real APIs with your keys. Real env vars win over the file.
+if (!process.env.VITEST && existsSync(ENV_FILE)) process.loadEnvFile(ENV_FILE);
 
 /** Prefer the project's Python venv tools; fall back to whatever is on PATH. */
 function venvOr(name: string): string {
@@ -24,4 +28,9 @@ export const config = {
   pythonBin: process.env.PYTHON_BIN ?? venvOr("python"),
   agentReachBin: process.env.AGENT_REACH_BIN ?? "agent-reach",
   quoraScript: path.join(ROOT, "scripts", "quora.py"),
+  /** Optional: a Reddit "script" app (reddit.com/prefs/apps) for the official API. */
+  redditClientId: process.env.REDDIT_CLIENT_ID ?? "",
+  redditClientSecret: process.env.REDDIT_CLIENT_SECRET ?? "",
+  /** Optional: your own Exa key (dashboard.exa.ai) instead of Agent Reach's shared free search. */
+  exaApiKey: process.env.EXA_API_KEY ?? "",
 } as const;

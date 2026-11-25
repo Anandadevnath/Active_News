@@ -68,6 +68,10 @@ Change queries, subreddits, boards and refresh intervals at the top of each file
 | `WEB_ORIGIN` (CORS) | `http://localhost:3000` |
 | `NEXT_PUBLIC_API_URL` (web) | `http://localhost:4000` |
 | `YTDLP_BIN`, `PYTHON_BIN`, `AGENT_REACH_BIN` | `.venv/bin/*`, then `PATH` |
+| `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | unset: public JSON, then Agent Reach |
+| `EXA_API_KEY` | unset: Quora falls back to Agent Reach's shared, rate-limited search |
+
+The server also reads `server/.env` (see `server/.env.example`).
 
 ## Known limits
 
