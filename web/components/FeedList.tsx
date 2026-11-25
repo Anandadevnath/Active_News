@@ -6,7 +6,6 @@ import { getFeed, newSeed, searchNews } from "@/lib/api";
 import { loadSeen, recordSeen } from "@/lib/seen";
 import { PLATFORM_LABEL, type Filter, type NewsItem, type SearchPage } from "@/lib/types";
 
-import styles from "./news.module.css";
 import { NewsCard } from "./NewsCard";
 
 const PAGE_SIZE = 30;
@@ -127,14 +126,13 @@ export function FeedList({ filter, query, includeSeen, now, onPlayingChange, onS
     [isSearch],
   );
 
-  const [lead, ...rest] = items;
   const initialLoading = items.length === 0 && hasMore && !error;
   const caughtUp = !hasMore && !isSearch && hiddenCount > 0;
 
   return (
     <>
       {isSearch && searchErrors.length > 0 && (
-        <details className={styles.searchErrors}>
+        <details className="mb-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-300 backdrop-blur-xl">
           <summary>Not searched: {searchErrors.map((e) => PLATFORM_LABEL[e.platform]).join(", ")}</summary>
           <ul>
             {searchErrors.map((e) => (
@@ -147,45 +145,38 @@ export function FeedList({ filter, query, includeSeen, now, onPlayingChange, onS
       )}
 
       {initialLoading && (
-        <div className={styles.grid} aria-busy="true" aria-label="Loading stories">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] items-stretch gap-x-6 gap-y-10" aria-busy="true" aria-label="Loading stories">
           {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} className={`${styles.card} ${styles.skeleton}`} />
+            <div key={i} className="h-[400px] rounded-2xl border border-white/5 bg-white/5 backdrop-blur-xl motion-safe:animate-pulse" />
           ))}
         </div>
       )}
 
-      {lead && !isSearch && (
-        <section aria-label="Hottest right now" className={styles.leadWrap}>
-          <h2 className={styles.sectionLabel}>{filter === "all" ? "Hottest right now" : `Top on ${PLATFORM_LABEL[filter]}`}</h2>
-          <NewsCard item={lead} now={now} fresh={false} lead cardRef={observeCard} onPlayingChange={onPlayingChange} />
-        </section>
-      )}
-
       {items.length > 0 && (
         <>
-          <h2 className={styles.sectionLabel}>{isSearch ? `Results for “${query}”` : "Being discussed"}</h2>
-          <div className={styles.grid}>
-            {(isSearch ? items : rest).map((item) => (
+          <h2 className="mb-4 flex items-center gap-3 text-xs font-bold tracking-[0.14em] text-zinc-400 uppercase after:h-px after:flex-1 after:bg-white/10">{isSearch ? `Results for “${query}”` : "Being discussed"}</h2>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] items-stretch gap-x-6 gap-y-10">
+            {items.map((item) => (
               <NewsCard key={item.id} item={item} now={now} fresh={false} cardRef={observeCard} onPlayingChange={onPlayingChange} />
             ))}
           </div>
         </>
       )}
 
-      <div ref={sentinel} className={styles.footer} aria-live="polite">
+      <div ref={sentinel} className="py-12 text-center text-sm text-zinc-400" aria-live="polite">
         {error ? (
           <p>
             {error}{" "}
-            <button type="button" className={styles.linkButton} onClick={() => { setError(null); void loadMore(); }}>
+            <button type="button" className="font-semibold text-zinc-100 underline underline-offset-4 hover:text-white" onClick={() => { setError(null); void loadMore(); }}>
               Try again
             </button>
           </p>
         ) : hasMore ? (
-          items.length > 0 && <p className={styles.loadingMore}>Loading more stories…</p>
+          items.length > 0 && <p className="font-serif text-zinc-500 italic motion-safe:animate-pulse">Loading more stories…</p>
         ) : caughtUp ? (
           <p>
             You are all caught up. {hiddenCount} stories you already saw are hidden.{" "}
-            <button type="button" className={styles.linkButton} onClick={onShowSeen}>
+            <button type="button" className="font-semibold text-zinc-100 underline underline-offset-4 hover:text-white" onClick={onShowSeen}>
               Show them
             </button>
           </p>

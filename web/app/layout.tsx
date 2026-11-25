@@ -3,8 +3,8 @@ import { Geist, Newsreader } from "next/font/google";
 
 import "./globals.css";
 
-const sans = Geist({ variable: "--font-sans", subsets: ["latin"] });
-const serif = Newsreader({ variable: "--font-serif", subsets: ["latin"], style: ["normal", "italic"] });
+const sans = Geist({ variable: "--font-geist", subsets: ["latin"] });
+const serif = Newsreader({ variable: "--font-newsreader", subsets: ["latin"], style: ["normal", "italic"] });
 
 export const metadata: Metadata = {
   title: "Active News",
@@ -13,8 +13,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${sans.variable} ${serif.variable}`}>
-      <body>{children}</body>
+    <html lang="en" className={`${sans.variable} ${serif.variable} scheme-dark`}>
+      <body className="min-h-dvh bg-ink font-sans text-[15px] leading-normal text-zinc-100 antialiased">{children}</body>
     </html>
   );
 }
