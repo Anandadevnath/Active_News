@@ -61,8 +61,9 @@ export function parseListing(listing: Listing): RawItem[] {
 }
 
 /**
- * Agent Reach's `subreddit` action needs its opencli backend, which breaks when Reddit blocks the IP;
- * its `search` action falls back to public web search (Exa), so the fallback searches per subreddit.
+ * Agent Reach's `subreddit` action (latest posts) needs its opencli backend plus a Reddit login
+ * (`agent-reach login reddit --import-existing`) when Reddit blocks the IP; if it fails, the `search`
+ * action falls back to public web search (Exa).
  * Step n searches subreddit n (wrapping) with a topic that changes each lap, so it never runs out.
  */
 async function viaAgentReach(step: number, count: number): Promise<RawItem[]> {
@@ -71,7 +72,9 @@ async function viaAgentReach(step: number, count: number): Promise<RawItem[]> {
     steps.map((n) => {
       const sub = SUBREDDITS[n % SUBREDDITS.length];
       const topic = topicAt(Math.floor(n / SUBREDDITS.length));
-      return runReach("reddit", ["reddit", "search", `r/${sub} ${topic}`, "--limit", String(FALLBACK_PER_SUB)]);
+      return runReach("reddit", ["reddit", "subreddit", sub!, "--limit", String(FALLBACK_PER_SUB)]).catch(() =>
+        runReach("reddit", ["reddit", "search", `r/${sub} ${topic}`, "--limit", String(FALLBACK_PER_SUB)]),
+      );
     }),
   );
   const seen = new Set<string>();
