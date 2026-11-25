@@ -7,7 +7,8 @@ import type { FeedPage, Filter, NewsItem, Platform, RawItem, SourceStatus } from
 
 const MAX_POOL = 1500; // per platform; least recently seen stories are dropped first
 const PREFETCH = 30; // load deeper pages when a reader gets this close to the end
-const LOAD_MORE_TIMEOUT_MS = 30_000;
+const LOAD_MORE_TIMEOUT_MS = 30_000; // when the requested page cannot be filled yet
+const FULL_PAGE_WAIT_MS = 3_000; // when it can: slow platforms finish in the background
 const MAX_LOAD_ROUNDS = 3; // deeper pages per platform per feed request
 
 interface Entry {
@@ -175,6 +176,7 @@ export class NewsStore extends EventEmitter {
 
   /**
    * A page of the feed; pulls deeper pages from the platforms when the reader nears the end.
+   * Waits up to 30s when the requested page cannot be filled yet, else at most 3s.
    * `seed` (one per visit) shuffles stories of similar heat so each reload leads with different ones.
    */
   async feed(filter: Filter, offset: number, limit: number, seed?: number): Promise<FeedPage> {
@@ -183,9 +185,12 @@ export class NewsStore extends EventEmitter {
       const targets = this.needMore(filter, offset + limit + PREFETCH, seed);
       if (targets.length === 0) break;
       const before = this.items(filter).length;
-      const timeout = new Promise((r) => setTimeout(r, Math.max(0, deadline - this.now())).unref());
-      await Promise.race([Promise.allSettled(targets.map((p) => this.loadMore(p))), timeout]);
-      if (this.items(filter).length === before || this.now() >= deadline) break; // nothing new or out of time
+      const loads = Promise.allSettled(targets.map((p) => this.loadMore(p)));
+      // Page already full: wait briefly (keeps "all" mixed when sources are quick), then answer while loads finish.
+      const until = before >= offset + limit ? Math.min(deadline, this.now() + FULL_PAGE_WAIT_MS) : deadline;
+      const timeout = new Promise((r) => setTimeout(r, Math.max(0, until - this.now())).unref());
+      await Promise.race([loads, timeout]);
+      if (this.items(filter).length === before || this.now() >= until) break; // nothing new or out of time
     }
     const list = this.items(filter, seed);
     return { items: list.slice(offset, offset + limit), hasMore: list.length > offset + limit || this.canGrow(filter), total: list.length };

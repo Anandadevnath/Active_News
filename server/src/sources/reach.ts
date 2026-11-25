@@ -24,6 +24,14 @@ interface ReachOutput {
 const SCORE_KEYS = ["score", "ups", "like_count", "likes", "favorite_count", "favorites"];
 const COMMENT_KEYS = ["num_comments", "comments", "reply_count", "replies"];
 const VIEW_KEYS = ["view_count", "views"];
+const IMAGE_RE = /\.(jpe?g|png|webp)(\?|$)/i;
+
+/** Preview image: Twitter's video poster, else the first attached image. */
+export function findPoster(raw: unknown): string | null {
+  const r = (raw ?? {}) as { media_posters?: unknown; media_urls?: unknown };
+  const candidates = [r.media_posters, r.media_urls].flatMap((v) => (Array.isArray(v) ? v : []));
+  return candidates.find((u): u is string => typeof u === "string" && u.startsWith("https://") && IMAGE_RE.test(u)) ?? null;
+}
 
 export function toRawItem(it: ReachItem & { url: string }, platform: Platform): RawItem {
   const text = it.text ?? "";
@@ -37,7 +45,7 @@ export function toRawItem(it: ReachItem & { url: string }, platform: Platform): 
     publishedAt: it.published_at ?? null,
     discussionUrl: null,
     video,
-    thumbnail: youtubeThumb(video),
+    thumbnail: youtubeThumb(video) ?? findPoster(it.raw),
     metrics: {
       score: findNumber(it.raw, SCORE_KEYS),
       comments: findNumber(it.raw, COMMENT_KEYS),

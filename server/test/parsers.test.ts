@@ -93,3 +93,13 @@ describe("quora", () => {
     expect(() => parseQuoraOutput('{"error":"HTTP 403"}')).toThrow("HTTP 403");
   });
 });
+
+describe("Agent Reach poster", () => {
+  it("uses Twitter's video poster, else an attached image, never a non-https or video URL", async () => {
+    const { findPoster } = await import("../src/sources/reach.js");
+    expect(findPoster({ media_posters: ["https://pbs.twimg.com/thumb/a.jpg"], media_urls: ["https://video.twimg.com/v.mp4"] })).toBe("https://pbs.twimg.com/thumb/a.jpg");
+    expect(findPoster({ media_urls: ["https://video.twimg.com/v.mp4", "https://pbs.twimg.com/media/b.png?name=large"] })).toBe("https://pbs.twimg.com/media/b.png?name=large");
+    expect(findPoster({ media_urls: ["http://x/c.jpg"] })).toBeNull();
+    expect(findPoster(null)).toBeNull();
+  });
+});
