@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { parseCatalog } from "../src/sources/fourchan.js";
-import { parseHnItem, parseMetaDescription } from "../src/sources/hackernews.js";
+import { parseMetaDescription } from "../src/sources/article.js";
+import { parseHnItem } from "../src/sources/hackernews.js";
 import { parseQuoraOutput } from "../src/sources/quora.js";
 import { parseReachOutput } from "../src/sources/reach.js";
 import { parseListing } from "../src/sources/reddit.js";
@@ -101,5 +102,56 @@ describe("Agent Reach poster", () => {
     expect(findPoster({ media_urls: ["https://video.twimg.com/v.mp4", "https://pbs.twimg.com/media/b.png?name=large"] })).toBe("https://pbs.twimg.com/media/b.png?name=large");
     expect(findPoster({ media_urls: ["http://x/c.jpg"] })).toBeNull();
     expect(findPoster(null)).toBeNull();
+  });
+});
+
+describe("Reddit search markdown", () => {
+  const text = [
+    "# Hacker tries to breach the FEC",
+    "",
+    "Posted by **u/Cara** in r/news · 8834 points · 240 comments · October 27, 2026 at 6:58 PM UTC",
+    "",
+    "https://www.reuters.com/technology/fec-2026-10-27/",
+    "",
+    "## Top comments (50 shown of 240 reported)",
+    "",
+    "**u/Bard** · 1042 points · October 27, 2026 at 7:13 PM UTC",
+    "> The FEC has nothing to do with voting.",
+  ].join("\n");
+
+  it("turns a link post into a story pointing at the article, with stats and the top comment", async () => {
+    const { redditItemFromText } = await import("../src/sources/reddit-text.js");
+    const item = redditItemFromText("https://www.reddit.com/r/news/comments/abc/x/", "Hacker tries to breach the FEC : r/news", text);
+    expect(item).toMatchObject({
+      title: "Hacker tries to breach the FEC",
+      url: "https://www.reuters.com/technology/fec-2026-10-27/",
+      discussionUrl: "https://www.reddit.com/r/news/comments/abc/x/",
+      author: "r/news · u/Cara",
+      description: "Top comment: The FEC has nothing to do with voting.",
+      publishedAt: "2026-10-27T18:58:00.000Z",
+      metrics: { score: 8834, comments: 240 },
+    });
+  });
+
+  it("returns null for text in another shape", async () => {
+    const { redditItemFromText } = await import("../src/sources/reddit-text.js");
+    expect(redditItemFromText("https://www.reddit.com/r/x/comments/1/", "t", "plain text")).toBeNull();
+  });
+});
+
+describe("article preview image", () => {
+  it("reads og:image as an absolute https URL and rejects http", async () => {
+    const { parseMetaImage } = await import("../src/sources/article.js");
+    expect(parseMetaImage('<meta property="og:image" content="/img/a.jpg">', "https://site.com/post")).toBe("https://site.com/img/a.jpg");
+    expect(parseMetaImage('<meta name="twitter:image" content="http://x.com/b.png">', "https://site.com/")).toBeNull();
+    expect(parseMetaImage("<p>none</p>", "https://site.com/")).toBeNull();
+  });
+});
+
+describe("Reddit search markdown without a comments heading", () => {
+  it("stops the body at the first comment line and uses it as the top comment", async () => {
+    const { parseRedditText } = await import("../src/sources/reddit-text.js");
+    const text = "# T\n\nPosted by **u/a** in r/science · 5 points · 2 comments · October 26, 2026 at 2:16 PM UTC\n\nhttps://news.umich.edu/x\n\n...\n\n**u/b** · 617 points · October 26, 2026 at 2:16 PM UTC\n> A cavity is not always drilling.";
+    expect(parseRedditText(text)).toMatchObject({ linkUrl: "https://news.umich.edu/x", body: "", topComment: "A cavity is not always drilling." });
   });
 });

@@ -2,6 +2,7 @@ import { config } from "../config.js";
 import { clip, findNumber, findVideoFile, videoFor, youtubeThumb } from "../media.js";
 import type { Platform, RawItem } from "../types.js";
 import { runCli } from "./http.js";
+import { redditItemFromText } from "./reddit-text.js";
 
 const REACH_TIMEOUT_MS = 120_000;
 
@@ -35,6 +36,10 @@ export function findPoster(raw: unknown): string | null {
 
 export function toRawItem(it: ReachItem & { url: string }, platform: Platform): RawItem {
   const text = it.text ?? "";
+  if (platform === "reddit") {
+    const post = redditItemFromText(it.url, it.title ?? "", text);
+    if (post) return post;
+  }
   const video = videoFor(it.url, findVideoFile(it.raw));
   return {
     platform,

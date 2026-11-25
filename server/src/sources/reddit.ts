@@ -1,6 +1,7 @@
 import { clip, decodeEntities, epochIso, videoFor, youtubeThumb } from "../media.js";
 import type { Page, RawItem } from "../types.js";
 import { fetchJson } from "./http.js";
+import { withArticleMeta } from "./article.js";
 import { runReach } from "./reach.js";
 import { hasRedditApi, redditApiGet } from "./reddit-api.js";
 import { topicAt } from "./topics.js";
@@ -80,7 +81,10 @@ async function viaAgentReach(step: number, count: number): Promise<RawItem[]> {
   const seen = new Set<string>();
   const items = settled
     .flatMap((r) => (r.status === "fulfilled" ? r.value : []))
-    .filter((it) => it.url.includes("/comments/") && !seen.has(it.url) && Boolean(seen.add(it.url)));
+    .filter((it) => {
+      const post = it.discussionUrl ?? it.url;
+      return post.includes("/comments/") && !seen.has(post) && Boolean(seen.add(post));
+    });
   if (items.length === 0 && settled.every((r) => r.status === "rejected")) {
     const reasons = settled.map((r) => String(((r as PromiseRejectedResult).reason as Error)?.message ?? ""));
     throw new Error(reasons.filter(Boolean).join("; ") || "no posts");
@@ -89,7 +93,8 @@ async function viaAgentReach(step: number, count: number): Promise<RawItem[]> {
 }
 
 async function reachPage(step: number, count: number): Promise<Page> {
-  return { items: await viaAgentReach(step, count), next: `${REACH_CURSOR}${step + count}` };
+  const items = await Promise.all((await viaAgentReach(step, count)).map(withArticleMeta)); // preview images of linked articles
+  return { items, next: `${REACH_CURSOR}${step + count}` };
 }
 
 /**

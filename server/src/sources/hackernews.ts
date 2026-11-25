@@ -1,8 +1,7 @@
-import * as cheerio from "cheerio";
-
 import { clip, epochIso, stripHtml, videoFor, youtubeThumb } from "../media.js";
 import type { Page, RawItem } from "../types.js";
-import { fetchJson, fetchText } from "./http.js";
+import { withArticleMeta } from "./article.js";
+import { fetchJson } from "./http.js";
 
 const API = "https://hacker-news.firebaseio.com/v0";
 const SEARCH_API = "https://hn.algolia.com/api/v1/search";
@@ -10,8 +9,6 @@ const LISTS = ["topstories", "beststories", "newstories"]; // ~1,200 ids, top fi
 const PAGE_SIZE = 30;
 const SEARCH_PAGE_SIZE = 20;
 const SEARCH_WINDOW_S = 7 * 24 * 3600;
-const ARTICLE_TIMEOUT_MS = 8_000;
-const META_SELECTORS = ['meta[property="og:description"]', 'meta[name="description"]', 'meta[name="twitter:description"]'];
 
 export interface HnItem {
   id: number;
@@ -69,24 +66,6 @@ export function parseAlgoliaHit(h: AlgoliaHit): RawItem | null {
   });
 }
 
-export function parseMetaDescription(html: string): string {
-  const $ = cheerio.load(html);
-  for (const sel of META_SELECTORS) {
-    const value = $(sel).attr("content")?.trim();
-    if (value) return clip(value);
-  }
-  return "";
-}
-
-async function withDescription(item: RawItem): Promise<RawItem> {
-  if (item.description || item.url === item.discussionUrl) return item;
-  try {
-    return { ...item, description: parseMetaDescription(await fetchText(item.url, ARTICLE_TIMEOUT_MS)) };
-  } catch {
-    return item; // article sites fail often; the story still shows without a description
-  }
-}
-
 async function allIds(): Promise<number[]> {
   const lists = await Promise.all(LISTS.map((l) => fetchJson<number[]>(`${API}/${l}.json`)));
   return [...new Set(lists.flat())];
@@ -98,7 +77,7 @@ export async function fetchHackerNews(cursor: string | null): Promise<Page> {
   const ids = await allIds();
   const slice = ids.slice(offset, offset + PAGE_SIZE);
   const raws = await Promise.all(slice.map((id) => fetchJson<HnItem | null>(`${API}/item/${id}.json`)));
-  const items = await Promise.all(raws.map(parseHnItem).filter((i): i is RawItem => i !== null).map(withDescription));
+  const items = await Promise.all(raws.map(parseHnItem).filter((i): i is RawItem => i !== null).map(withArticleMeta));
   const end = offset + PAGE_SIZE;
   return { items, next: end < ids.length ? String(end) : null };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- thumbnails come from many external hosts */
-import { memo } from "react";
+import { memo, useState } from "react";
 
 import { compact, safeUrl, timeAgo } from "@/lib/format";
 import { PLATFORM_LABEL, type NewsItem } from "@/lib/types";
@@ -33,9 +33,12 @@ function NewsCardImpl({ item, now, fresh, cardRef, onPlayingChange }: NewsCardPr
   const href = safeUrl(item.url);
   const discuss = safeUrl(item.discussionUrl);
   const age = timeAgo(item.publishedAt, now);
-  const thumb = safeUrl(item.thumbnail);
+  const [imageFailed, setImageFailed] = useState(false); // hotlink-protected images: fall back to the text view
+  const thumb = imageFailed ? undefined : safeUrl(item.thumbnail);
   const accent = ACCENT[item.platform];
   const metrics = metricsText(item);
+  const hasMedia = Boolean(item.video || thumb);
+  const host = href ? new URL(href).hostname.replace(/^www\./, "") : null;
 
   return (
     // No box: a thin platform-colored rule separates stories; every slot has a fixed size so all stories match.
@@ -57,6 +60,7 @@ function NewsCardImpl({ item, now, fresh, cardRef, onPlayingChange }: NewsCardPr
         </span>
       </header>
 
+      {/* Show only what the platform gives: video, else image, else the post's own text in the same 16:9 slot. */}
       {item.video ? (
         <VideoPlayer
           video={item.video}
@@ -65,13 +69,14 @@ function NewsCardImpl({ item, now, fresh, cardRef, onPlayingChange }: NewsCardPr
           onPlayingChange={(playing) => onPlayingChange(item.id, playing)}
         />
       ) : thumb ? (
-        <img className={`${MEDIA} object-cover`} src={thumb} alt="" loading="lazy" />
+        <img className={`${MEDIA} object-cover`} src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setImageFailed(true)} />
       ) : (
-        <div
-          aria-hidden="true"
-          className={`${MEDIA} grid place-items-center backdrop-blur-xl ${accent.tint} ${accent.text} text-xs font-bold tracking-[0.2em] uppercase`}
-        >
-          {PLATFORM_LABEL[item.platform]}
+        <div className={`aspect-video w-full overflow-hidden border-l-2 pl-4 ${accent.border}`}>
+          {item.description ? (
+            <p className="h-full text-[15px] leading-relaxed text-zinc-300 mask-b-from-55% [overflow-wrap:anywhere]">{item.description}</p>
+          ) : (
+            <p className="flex h-full items-center text-sm text-zinc-500">{host ? `Link to ${host}` : "No preview from this platform"}</p>
+          )}
         </div>
       )}
 
@@ -81,7 +86,10 @@ function NewsCardImpl({ item, now, fresh, cardRef, onPlayingChange }: NewsCardPr
         </a>
       </h3>
 
-      <p className="line-clamp-2 min-h-[3.25em] text-sm leading-relaxed text-zinc-400 [overflow-wrap:anywhere]">{item.description}</p>
+      {/* fixed 2-line slot: the description, or for text-only stories (text is shown above) the source site */}
+      <p className="line-clamp-2 min-h-[3.25em] text-sm leading-relaxed text-zinc-400 [overflow-wrap:anywhere]">
+        {hasMedia ? item.description : host && <span className="text-zinc-500">↗ {host}</span>}
+      </p>
 
       <footer className="mt-auto box-content flex h-4 gap-3 overflow-hidden border-t border-dashed border-white/10 pt-2 text-xs leading-4 whitespace-nowrap text-zinc-500">
         {item.author && <span className="min-w-0 truncate">{item.author}</span>}
