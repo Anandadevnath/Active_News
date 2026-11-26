@@ -8,8 +8,18 @@ import type { FeedPage, Filter, NewsItem, Platform, RawItem, Sort, SourceStatus 
 const MAX_POOL = 20_000; // per platform; least recently seen stories are dropped first (deeper ones are re-fetched on demand)
 const PREFETCH = 30; // load deeper pages when a reader gets this close to the end
 const LOAD_MORE_TIMEOUT_MS = 30_000; // when the requested page cannot be filled yet
-const FULL_PAGE_WAIT_MS = 3_000; // when it can: slow platforms finish in the background
+const MIX_WAIT_MS = 1_000; // "all" with a full page: quick platforms still get mixed in; slow ones finish in the background
 const MAX_LOAD_ROUNDS = 3; // deeper pages per platform per feed request
+const SNAPSHOT_MAX = 3_000; // stories per platform kept across restarts (best ranked first)
+const SNAPSHOT_MAX_AGE_MS = 60 * 60_000; // an older snapshot is ignored: wait for the live refresh instead
+const SNAPSHOT_VERSION = 2; // bump when RawItem changes shape, so old files are ignored (2: News reads outlet feeds, not Google headlines)
+
+/** The pool on disk, so a restart serves stories at once while the live refreshes run. */
+export interface Snapshot {
+  version: number;
+  at: number;
+  pools: Partial<Record<Platform, RawItem[]>>;
+}
 
 interface Entry {
   raw: RawItem;
@@ -89,6 +99,22 @@ export class NewsStore extends EventEmitter {
     return list;
   }
 
+  snapshot(): Snapshot {
+    const pools = [...this.pools].map(([p, entries]) => [p, [...entries.values()].sort((a, b) => a.rank - b.rank).slice(0, SNAPSHOT_MAX).map((e) => e.raw)]);
+    return { version: SNAPSHOT_VERSION, at: this.now(), pools: Object.fromEntries(pools) };
+  }
+
+  /** Serves a recent snapshot's stories until each platform's live refresh replaces or extends them. */
+  restore(snap: Partial<Snapshot> | null): void {
+    if (snap?.version !== SNAPSHOT_VERSION || typeof snap.at !== "number" || this.now() - snap.at > SNAPSHOT_MAX_AGE_MS) return;
+    for (const p of this.platforms()) {
+      const items = (Array.isArray(snap.pools?.[p]) ? snap.pools[p] : []).filter((i) => typeof i?.url === "string" && typeof i.title === "string");
+      if (items.length === 0 || this.pools.has(p)) continue;
+      this.merge(p, items, 0, false);
+      this.setStatus(p, { count: this.pools.get(p)?.size ?? 0, updatedAt: new Date(snap.at).toISOString() });
+    }
+  }
+
   /** Platforms whose stories run out within the reader's next screenful and can still fetch more. */
   private needMore(filter: Filter, upTo: number, seed?: number, sort: Sort = "hot"): Platform[] {
     const window = this.items(filter, seed, sort).slice(0, upTo);
@@ -97,7 +123,7 @@ export class NewsStore extends EventEmitter {
       if (!this.sources[p] || this.cursors.get(p) === null || this.status.get(p)?.error) return false;
       const total = this.scored.get(p)?.length ?? 0;
       const used = window.filter((i) => i.platform === p).length;
-      return total === 0 || used + PREFETCH / 3 >= total;
+      return total === 0 || used + (this.sources[p]!.readAhead ?? PREFETCH / 3) >= total;
     });
   }
 
@@ -199,20 +225,36 @@ export class NewsStore extends EventEmitter {
 
   /**
    * A page of the feed; pulls deeper pages from the platforms when the reader nears the end.
-   * Waits up to 30s when the requested page cannot be filled yet, else at most 3s.
+   * A full page answers at once (deeper "all" pages after 1s, so quick platforms stay mixed in) while the loads finish
+   * in the background; a page that is not full answers as soon as it fills, waiting at most 30s.
    * `seed` (one per visit) shuffles stories of similar heat so each reload leads with different ones.
    */
   async feed(filter: Filter, offset: number, limit: number, seed?: number, sort: Sort = "hot"): Promise<FeedPage> {
     const deadline = this.now() + LOAD_MORE_TIMEOUT_MS;
+    const mixUntil = Math.min(deadline, this.now() + MIX_WAIT_MS);
+    const want = offset + limit;
+    let waitedToFill = false;
     for (let round = 0; round < MAX_LOAD_ROUNDS; round += 1) {
-      const targets = this.needMore(filter, offset + limit + PREFETCH, seed, sort);
+      const targets = this.needMore(filter, want + PREFETCH, seed, sort);
       if (targets.length === 0) break;
       const before = this.items(filter).length;
       const loads = Promise.allSettled(targets.map((p) => this.loadMore(p)));
-      // Page already full: wait briefly (keeps "all" mixed when sources are quick), then answer while loads finish.
-      const until = before >= offset + limit ? Math.min(deadline, this.now() + FULL_PAGE_WAIT_MS) : deadline;
+      const full = before >= want;
+      // wait to mix only on deeper "all" pages: one platform has nothing to mix, and page 1 and a page just filled answer now
+      if (full && (filter !== "all" || offset === 0 || waitedToFill)) break;
+      const until = full ? mixUntil : deadline;
+      let check = () => {};
+      const filled = new Promise<void>((resolve) => {
+        check = () => void (!full && this.items(filter).length >= want && resolve());
+        this.on("status", check);
+      });
       const timeout = new Promise((r) => setTimeout(r, Math.max(0, until - this.now())).unref());
-      await Promise.race([loads, timeout]);
+      try {
+        await Promise.race([loads, filled, timeout]);
+      } finally {
+        this.off("status", check);
+      }
+      waitedToFill = !full;
       if (this.items(filter).length === before || this.now() >= until) break; // nothing new or out of time
     }
     const list = this.items(filter, seed, sort);

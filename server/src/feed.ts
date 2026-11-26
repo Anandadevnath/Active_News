@@ -35,7 +35,8 @@ export function interleave(lists: readonly (readonly NewsItem[])[]): NewsItem[] 
   return Array.from({ length: rounds }, (_, r) => lists.flatMap((l) => (l[r] ? [l[r]] : [])).sort(byHeat)).flat();
 }
 
-const timeOf = (i: NewsItem) => (i.publishedAt ? Date.parse(i.publishedAt) || 0 : 0);
+/** Publish time in ms; 0 when unknown. */
+export const timeOf = (i: NewsItem): number => (i.publishedAt ? Date.parse(i.publishedAt) || 0 : 0);
 
 /** Newest first; undated stories last, hottest first among equals. */
 export function byTime(a: NewsItem, b: NewsItem): number {

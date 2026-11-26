@@ -101,6 +101,49 @@ describe("NewsStore pool", () => {
     expect(paged.calls.length).toBeGreaterThan(1);
   });
 
+  it("starts a slow platform's next page earlier when it reads further ahead", async () => {
+    const plain = pagedSource(10, 20, "twitter");
+    const ahead = { ...pagedSource(10, 20, "twitter"), readAhead: 60 };
+    for (const source of [plain, ahead]) {
+      const store = new NewsStore({ twitter: source });
+      await store.refresh("twitter");
+      await store.loadMore("twitter");
+      await store.loadMore("twitter"); // 60 stories collected
+      source.calls.length = 0;
+      await store.feed("twitter", 0, 10); // reader is 50 stories from the end
+    }
+    expect(plain.calls).toEqual([]);
+    expect(ahead.calls).toEqual(["3"]);
+  });
+
+  it("answers a page the quick platforms filled without waiting for a slow one", async () => {
+    const slow = { intervalMs: 1000, fetch: () => new Promise<Page>(() => {}) }; // never answers
+    const store = new NewsStore({ hackernews: pagedSource(1, 40), twitter: slow });
+    const started = Date.now();
+    const page = await store.feed("all", 0, 30);
+    expect(page.items).toHaveLength(30);
+    expect(Date.now() - started).toBeLessThan(1_000);
+  });
+
+  it("serves a recent snapshot after a restart and ignores an old or outdated one", async () => {
+    let t = 1_000_000_000;
+    const sources = { hackernews: pagedSource(1, 3), reddit: pagedSource(1, 2, "reddit") };
+    const before = new NewsStore(sources, () => t);
+    await before.refresh("hackernews");
+    const snap = JSON.parse(JSON.stringify(before.snapshot()));
+    t += 5 * 60_000;
+    const after = new NewsStore(sources, () => t);
+    after.restore(snap);
+    expect(after.items("hackernews")).toHaveLength(3);
+    expect(after.statuses().find((s) => s.platform === "hackernews")?.count).toBe(3);
+    expect(sources.hackernews.calls).toEqual([null]); // served from the snapshot, not fetched again
+    const stale = new NewsStore(sources, () => t + 2 * 60 * 60_000);
+    stale.restore(snap);
+    stale.restore({ ...snap, at: t, version: 0 });
+    stale.restore(null);
+    expect(stale.items()).toHaveLength(0);
+  });
+
   it("runs one fetch per platform at a time", async () => {
     const source = pagedSource(1, 5);
     const store = new NewsStore({ hackernews: source });
@@ -151,7 +194,33 @@ describe("Searcher", () => {
     const result = await searcher.search("mars", "all", 0);
     expect(result.items.map((i) => i.url)).toEqual(["https://pool/1", "https://live/1"]);
     await searcher.search("MARS", "all", 0);
-    expect(live).toHaveBeenCalledTimes(1);
+    expect(live.mock.calls.filter((c: unknown[]) => c[1] === 0)).toHaveLength(1);
+    expect(live).toHaveBeenCalledWith("mars", 1, "hot"); // the next page is built in the background
+  });
+
+  it("answers a fast request with what quick platforms found, then the full page on the next ask", async () => {
+    let finishSlow = (_: RawItem[]) => {};
+    const sources = {
+      hackernews: { intervalMs: 1000, fetch: async () => ({ items: [], next: null }), search: async () => [item("https://hn/1", 5, "hackernews", "Mars quick")] },
+      twitter: { intervalMs: 1000, fetch: async () => ({ items: [], next: null }), search: (_q: string, page: number) => (page === 0 ? new Promise<RawItem[]>((r) => (finishSlow = r)) : Promise.resolve([])) },
+    } satisfies Partial<Record<Platform, SourceDef>>;
+    const searcher = new Searcher(new NewsStore(sources), sources);
+    vi.useFakeTimers();
+    try {
+      for (const sort of ["hot", "latest"] as const) {
+        const quick = searcher.search("mars", "all", 0, sort, true);
+        await vi.advanceTimersByTimeAsync(1_500);
+        expect(await quick).toMatchObject({ partial: true, pending: ["twitter"] });
+        expect((await quick).items.map((i) => i.url)).toEqual(["https://hn/1"]);
+        const full = searcher.search("mars", "all", 0, sort);
+        finishSlow([item("https://x/1", 5, "twitter", "Mars slow")]);
+        const page = await full;
+        expect(page.partial).toBeUndefined();
+        expect(page.items.map((i) => i.url).sort()).toEqual(["https://hn/1", "https://x/1"]);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps old live results like the platform's own search, ranked below newer ones", async () => {
@@ -175,9 +244,9 @@ describe("Searcher", () => {
     const searcher = new Searcher(new NewsStore(sources), sources);
     const latest = await searcher.search("storm", "all", 0, "latest");
     expect(latest.items.map((i) => i.url)).toEqual(["https://new-cold", "https://old-hot"]);
-    expect(live).toHaveBeenLastCalledWith("storm", 0, "latest");
+    expect(live).toHaveBeenCalledWith("storm", 0, "latest");
     await searcher.search("storm", "all", 0, "hot");
-    expect(live).toHaveBeenCalledTimes(2);
+    expect(live.mock.calls.filter((c: unknown[]) => c[1] === 0 && c[2] === "hot")).toHaveLength(1);
   });
 
   it("ranks hot results by how many keywords they match, then by heat", async () => {

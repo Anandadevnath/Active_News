@@ -108,7 +108,13 @@ export function createApp(store: NewsStore, searcher: Searcher, webOrigin: strin
     "/api/search",
     rateLimit(SEARCH_RATE),
     wrap((req) =>
-      searcher.search(parseQuery(req.query.q), parseFilter(req.query.platform), parseInt(req.query.page, "page", 0, MAX_SEARCH_PAGE), parseSort(req.query.sort)),
+      searcher.search(
+        parseQuery(req.query.q),
+        parseFilter(req.query.platform),
+        parseInt(req.query.page, "page", 0, MAX_SEARCH_PAGE),
+        parseSort(req.query.sort),
+        req.query.fast === "1", // answer within ~1.5s with what has arrived; the client asks again for the full page
+      ),
     ),
   );
 

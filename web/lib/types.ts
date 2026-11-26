@@ -1,6 +1,6 @@
 // Browser-side copy of server/src/types.ts. Keep the two in sync.
 
-export const PLATFORMS = ["youtube", "reddit", "hackernews", "4chan", "twitter", "quora", "news"] as const;
+export const PLATFORMS = ["youtube", "reddit", "hackernews", "4chan", "twitter", "bluesky", "quora", "news"] as const;
 export type Platform = (typeof PLATFORMS)[number];
 export type Filter = Platform | "all";
 
@@ -51,6 +51,8 @@ export interface SearchPage {
   items: NewsItem[];
   hasMore: boolean;
   errors: { platform: Platform; error: string }[];
+  partial?: boolean; // a quick first look while `pending` platforms are still searching; ask again for the full page
+  pending?: Platform[];
 }
 
 export const PLATFORM_LABEL: Record<Platform, string> = {
@@ -59,6 +61,7 @@ export const PLATFORM_LABEL: Record<Platform, string> = {
   hackernews: "Hacker News",
   "4chan": "4chan",
   twitter: "X / Twitter",
+  bluesky: "Bluesky",
   quora: "Quora",
   news: "News sites",
 };

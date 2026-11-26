@@ -28,6 +28,12 @@ const VIEW_KEYS = ["view_count", "views"];
 const IMAGE_RE = /\.(jpe?g|png|webp)(\?|$)/i;
 
 /** Preview image: Twitter's video poster, else the first attached image. */
+/** Any date the platform gives (X sends "Thu Nov 26 14:47:26 +0000 2026") as ISO, or null. */
+function isoDate(value: string | null | undefined): string | null {
+  const ms = value ? Date.parse(value) : NaN;
+  return Number.isNaN(ms) ? null : new Date(ms).toISOString();
+}
+
 export function findPoster(raw: unknown): string | null {
   const r = (raw ?? {}) as { media_posters?: unknown; media_urls?: unknown };
   const candidates = [r.media_posters, r.media_urls].flatMap((v) => (Array.isArray(v) ? v : []));
@@ -48,7 +54,7 @@ export function toRawItem(it: ReachItem & { url: string }, platform: Platform): 
     url: it.url,
     author: it.author ?? "",
     description: it.title ? clip(text) : "",
-    publishedAt: it.published_at ?? null,
+    publishedAt: isoDate(it.published_at),
     discussionUrl: null,
     video,
     thumbnail: youtubeThumb(video) ?? findPoster(it.raw),

@@ -17,6 +17,9 @@ const FEED_TTL_MS = 60 * 60_000; // keep deep feed positions an hour, so scrolli
 const REFRESH_STREAMS = 4; // streams re-read per live refresh, taking turns
 // newest-first search: YouTube has no upload-date sort any more, so read narrow upload windows first
 export const LATEST_WINDOWS: readonly UploadDate[] = ["today", "week", "month", "year", "all"];
+const DAY_MS = 86_400_000;
+const WINDOW_SPAN_MS = [DAY_MS, 7 * DAY_MS, 30 * DAY_MS, 365 * DAY_MS]; // how far back each window (but "all") reaches
+const WINDOW_PAGES = 5; // YouTube pages read per upload window (~100 videos); YouTube orders by relevance inside one
 const REGION = "US"; // results still lean toward the caller's IP region
 const LANGUAGE = "en";
 const PAGE_SIZE = 20; // yt-dlp fallback only
@@ -169,24 +172,48 @@ export async function fetchYouTube(cursor: string | null): Promise<Page> {
   return { items: await streamPage(STREAMS[step % STREAMS.length]!, Math.floor(step / STREAMS.length)), next: String(step + 1) };
 }
 
-/** Newest-first cursor: the upload window being read and YouTube's continuation inside it. */
+/** Newest-first cursor: the upload window being read, YouTube's continuation inside it, and when the search began. */
 export interface LatestCursor {
   window: number;
   search?: YtSearch;
+  start: number;
 }
 
-/** Continue inside the window while YouTube has more, then move to the next, wider window. */
-export function nextWindow(window: number, continuation: YtSearch | null): LatestCursor | null {
-  if (continuation) return { window, search: continuation };
-  return window + 1 < LATEST_WINDOWS.length ? { window: window + 1 } : null;
+/** Each window is read whole (up to WINDOW_PAGES) in one page; only the last, "any time", continues page by page. */
+export function nextWindow(c: LatestCursor, continuation: YtSearch | null): LatestCursor | null {
+  const last = c.window === LATEST_WINDOWS.length - 1;
+  if (last) return continuation ? { ...c, search: continuation } : null;
+  return { window: c.window + 1, start: c.start };
+}
+
+/** Uploads newer than this belong to an earlier window (read there, or past its page cap). */
+export function windowNewest(c: LatestCursor): number {
+  return c.window === 0 ? Infinity : c.start - WINDOW_SPAN_MS[c.window - 1]!;
 }
 
 const latestPager = new QueryPager<LatestCursor>();
 
+/**
+ * YouTube cannot sort by upload date, only filter by window, ordered by relevance inside it. Reading a whole
+ * window per page (and dropping uploads of the windows before it) keeps every page older than the last.
+ */
 async function latestPage(query: string, cursor: LatestCursor | undefined): Promise<CursorPage<LatestCursor>> {
-  const c = cursor ?? { window: 0 };
-  const page = await searchPage(query, { type: "video", upload_date: LATEST_WINDOWS[c.window] }, c.search);
-  return { items: page.items, next: nextWindow(c.window, page.next) };
+  const c = cursor ?? { window: 0, start: Date.now() };
+  const filters: SearchFilters = { type: "video", upload_date: LATEST_WINDOWS[c.window] };
+  const reads = c.window === LATEST_WINDOWS.length - 1 ? 1 : WINDOW_PAGES;
+  const items: RawItem[] = [];
+  let search = c.search;
+  for (let i = 0; i < reads; i += 1) {
+    const page = await searchPage(query, filters, search);
+    items.push(...page.items);
+    search = page.next ?? undefined;
+    if (!search) break;
+  }
+  const newest = windowNewest(c);
+  return {
+    items: dropRepeats(items.filter((i) => !i.publishedAt || Date.parse(i.publishedAt) <= newest)),
+    next: nextWindow(c, search ?? null),
+  };
 }
 
 /**

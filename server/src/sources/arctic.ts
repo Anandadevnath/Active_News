@@ -1,5 +1,5 @@
 import { filterByQuery, keywords } from "../feed.js";
-import type { Page, RawItem } from "../types.js";
+import type { Page, RawItem, Sort } from "../types.js";
 import { withArticleMeta } from "./article.js";
 import { fetchJson } from "./http.js";
 import { INTERESTS, rotation } from "./interests.js";
@@ -11,7 +11,7 @@ import { parseListing, type RedditPostData } from "./reddit.js";
  * minutes and keeps every post, so it works when Reddit blocks this network. Scores are snapshots
  * taken at ingestion, so the newest posts show low points.
  * PullPush (api.pullpush.io): a Reddit archive with global title search, about 6 weeks behind.
- * Both are volunteer-run: requests are limited to 2 at a time.
+ * Both are volunteer-run: requests are limited to 4 at a time.
  */
 const ARCTIC = "https://arctic-shift.photon-reddit.com/api";
 const PULLPUSH = "https://api.pullpush.io/reddit/search/submission/";
@@ -20,7 +20,7 @@ const SEARCH_PER_SUB = 25;
 const PULLPUSH_PAGE = 50;
 const MAX_TOPIC_SUBS = 5;
 const MIN_SUBSCRIBERS = 1_000;
-const MAX_CONCURRENT = 2;
+const MAX_CONCURRENT = 4; // each request takes ~1.5s; a search page reads up to 9 subreddits
 const REFRESH_GROUPS = 3; // interests re-read per live refresh, taking turns
 const FEED_TTL_MS = 60 * 60_000; // keep each interest's position an hour, like the YouTube feed
 const FILTERED_PER_SUB = 100; // newest posts read from a subreddit that only partly covers the query
@@ -139,8 +139,9 @@ export async function topicSubreddits(query: string): Promise<NamedSubreddits> {
       .sort((a, b) => (b.subscribers ?? 0) - (a.subscribers ?? 0))
       .slice(0, MAX_TOPIC_SUBS)
       .map((s) => s.display_name!);
+  const lookups = await Promise.all(joins.map((join) => subredditsByPrefix(join))); // all at once: each answer takes ~1.5s
   for (const [n, join] of joins.entries()) {
-    const found = pick(await subredditsByPrefix(join));
+    const found = pick(lookups[n]!);
     if (n === 0 && found.length > 0) return { full: found, partial: [] };
     const others = words.filter((w) => !join.includes(w));
     const kept = found.filter((name) => name.toLowerCase() === join || others.some((w) => name.toLowerCase().includes(w)));
@@ -178,7 +179,7 @@ export interface RedditSearchCursor {
   subs: Record<string, number | null>; // whole subreddits: fetch posts before this epoch; null = done
   filtered: Record<string, number | null>; // filtered subreddits, same cursor; read for FILTERED_PAGES pages
   page: number; // pages read so far
-  pullpush: number | null | undefined; // undefined = first page
+  pullpush: number | null | undefined; // undefined = not started (first page, or waiting for the subreddits in latest)
 }
 
 async function pullpushTitle(query: string, before?: number): Promise<RedditPostData[]> {
@@ -196,17 +197,29 @@ async function readSubs(cursors: Record<string, number | null>, limit: number) {
   names.forEach((s, i) => {
     next[s] = perSub[i]!.length === limit ? oldest(perSub[i]!) : null;
   });
-  return { posts: perSub.flat(), next };
+  return { bySub: new Map(names.map((s, i) => [s, perSub[i]!])), next, fullOldest: perSub.filter((p) => p.length === limit).map(oldest) };
+}
+
+/**
+ * Latest: drop posts older than `floor` and let every subreddit that had some continue from `floor`, so a quiet
+ * subreddit whose page spans months does not put old posts ahead of a busy one's newer posts.
+ */
+function cutAt(read: Awaited<ReturnType<typeof readSubs>>, floor: number) {
+  const next = { ...read.next };
+  for (const [s, posts] of read.bySub) if (posts.some((p) => (p.created_utc ?? 0) < floor)) next[s] = floor;
+  return { posts: [...read.bySub.values()].flat().filter((p) => (p.created_utc ?? 0) >= floor), next };
 }
 
 const postText = (p: RedditPostData) => `${p.title} ${p.selftext ?? ""}`;
+const subsActive = (c: RedditSearchCursor) => [...Object.values(c.subs), ...Object.values(c.filtered)].some((v) => v !== null);
 
 /**
- * One page of Reddit search: every post of the query's own subreddits (all of r/OnePiece for "one piece"),
- * the newest matching posts of the subreddits that discuss it, and title matches across all of Reddit
- * from PullPush. Pages back in time until all of them run out.
+ * hot: every post of the query's own subreddits, matching posts of the ones that discuss it, and PullPush title matches.
+ * latest: the same, newest first page after page: subreddits are cut at a common time (cutAt), and PullPush
+ * (about six weeks behind) waits until the subreddits are read, or runs alone when there are none.
  */
-export async function arcticSearchPage(query: string, cursor: RedditSearchCursor | undefined): Promise<CursorPage<RedditSearchCursor>> {
+export async function arcticSearchPage(query: string, cursor: RedditSearchCursor | undefined, sort: Sort = "hot"): Promise<CursorPage<RedditSearchCursor>> {
+  const latest = sort === "latest";
   let state = cursor;
   let pp: RedditPostData[];
   if (!state) {
@@ -218,12 +231,18 @@ export async function arcticSearchPage(query: string, cursor: RedditSearchCursor
     const { whole, filtered } = classifySubreddits(named, filterByQuery(pp, (p) => p.title, query));
     state = { subs: Object.fromEntries(whole.map((s) => [s, 0])), filtered: Object.fromEntries(filtered.map((s) => [s, 0])), page: 0, pullpush: undefined };
   } else {
-    pp = state.pullpush === null ? [] : await pullpushTitle(query, state.pullpush).catch(() => [] as RedditPostData[]);
+    const ppDue = state.pullpush !== null && !(latest && subsActive(state));
+    pp = ppDue ? await pullpushTitle(query, state.pullpush ?? undefined).catch(() => [] as RedditPostData[]) : [];
   }
-  const [whole, partial] = await Promise.all([readSubs(state.subs, SEARCH_PER_SUB), readSubs(state.filtered, FILTERED_PER_SUB)]);
+  const ppUsed = !(latest && subsActive(state));
+  if (!ppUsed) pp = [];
+  const [wholeRead, partialRead] = await Promise.all([readSubs(state.subs, SEARCH_PER_SUB), readSubs(state.filtered, FILTERED_PER_SUB)]);
+  const floor = latest ? Math.max(-Infinity, ...wholeRead.fullOldest, ...partialRead.fullOldest) : -Infinity;
+  const whole = cutAt(wholeRead, floor);
+  const partial = cutAt(partialRead, floor);
   const lastFiltered = state.page + 1 >= FILTERED_PAGES;
   const nextFiltered = lastFiltered ? Object.fromEntries(Object.keys(partial.next).map((s) => [s, null])) : partial.next;
-  const nextPullpush = pp.length === PULLPUSH_PAGE ? oldest(pp) : null;
+  const nextPullpush = !ppUsed ? state.pullpush : pp.length === PULLPUSH_PAGE ? oldest(pp) : null;
   // PullPush title search matches loose words ("one piece of advice"): keep real matches only
   const items = toItems([...whole.posts, ...filterByQuery(partial.posts, postText, query), ...filterByQuery(pp, (p) => p.title, query)]);
   const done = nextPullpush === null && [...Object.values(whole.next), ...Object.values(nextFiltered)].every((v) => v === null);

@@ -1,5 +1,5 @@
 import { clip, decodeEntities, epochIso, videoFor, youtubeThumb } from "../media.js";
-import type { Page, RawItem } from "../types.js";
+import type { Page, RawItem, Sort } from "../types.js";
 import { fetchJson } from "./http.js";
 import { ARCTIC_CURSOR, arcticRefresh, arcticSearchPage, arcticStep, type RedditSearchCursor } from "./arctic.js";
 import { INTERESTS } from "./interests.js";
@@ -83,17 +83,18 @@ export async function fetchReddit(cursor: string | null): Promise<Page> {
 }
 
 /** Reddit's own search when reachable, else every post of the query's subreddits plus archive title matches. */
-export async function searchReddit(query: string, page: number): Promise<RawItem[]> {
+export async function searchReddit(query: string, page: number, sort: Sort = "hot"): Promise<RawItem[]> {
+  const key = `${sort}\u0000${query}`;
   if (page === 0) {
-    const params = new URLSearchParams({ q: query, sort: "relevance", t: "all", limit: String(SEARCH_PAGE_SIZE), raw_json: "1" });
+    const params = new URLSearchParams({ q: query, sort: sort === "latest" ? "new" : "relevance", t: "all", limit: String(SEARCH_PAGE_SIZE), raw_json: "1" });
     try {
       const direct = parseListing(
         hasRedditApi() ? await redditApiGet<Listing>(`/search?${params}`) : await fetchJson<Listing>(`https://www.reddit.com/search.json?${params}`),
       );
-      if (direct.length > 0) return [...direct, ...(await searchPager.page(query, 0, (c) => arcticSearchPage(query, c)))];
+      if (direct.length > 0) return [...direct, ...(await searchPager.page(key, 0, (c) => arcticSearchPage(query, c, sort)))];
     } catch {
       // blocked network: the archives below cover it
     }
   }
-  return searchPager.page(query, page, (c) => arcticSearchPage(query, c));
+  return searchPager.page(key, page, (c) => arcticSearchPage(query, c, sort));
 }

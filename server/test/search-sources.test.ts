@@ -73,6 +73,19 @@ describe("News sites (Google News RSS)", () => {
     expect(new URL(fetchText.mock.calls[0]![0] as string).searchParams.get("q")).toBe("one piece when:1d");
   }, 10_000);
 
+  it("skips today's articles on later Latest pages, since page 0 (when:1d) already had them", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-26T12:00:00Z")); // fixture articles are from 09:35 that day
+    try {
+      fetchText.mockResolvedValue(rss("One Piece news"));
+      expect(await searchNews("one piece", 0, "latest")).toHaveLength(1);
+      expect(await searchNews("one piece", 1, "latest")).toHaveLength(0);
+      expect(await searchNews("one piece", 1, "hot")).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 20_000);
+
   it("drops loosely related headlines that miss the query's keywords", async () => {
     fetchText.mockResolvedValue(rss("Best streaming websites to watch anime", "Crunchyroll Anime Awards 2026: your guide"));
     expect((await searchNews("how to make anime website", 0)).map((i) => i.title)).toEqual(["Best streaming websites to watch anime"]);

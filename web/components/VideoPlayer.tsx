@@ -71,6 +71,7 @@ export function VideoPlayer({ video, thumbnail, title, onPlayingChange }: VideoP
         src={`https://www.youtube-nocookie.com/embed/${video.id}?autoplay=1`}
         title={title}
         allow="autoplay; encrypted-media; picture-in-picture"
+        referrerPolicy="strict-origin-when-cross-origin"
         allowFullScreen
       />
       {/* overlays the player so opening a video never changes the story's height */}

@@ -1,0 +1,102 @@
+{
+  "/home/raccoon/Downloads/Project/Active_News/web/app/layout.tsx": {
+    "mtime": 1795725519.2917638,
+    "ast_hash": "918334454e46b37d07d93b2191978890",
+    "semantic_hash": "918334454e46b37d07d93b2191978890"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/app/page.tsx": {
+    "mtime": 1795630943.7220812,
+    "ast_hash": "5f1fbb2e1d3150569a6cefd08cfe2d63",
+    "semantic_hash": "5f1fbb2e1d3150569a6cefd08cfe2d63"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/components/Feed.tsx": {
+    "mtime": 1795726156.141984,
+    "ast_hash": "7497e736ea791d156e6d0f4c446b86f4",
+    "semantic_hash": "7497e736ea791d156e6d0f4c446b86f4"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/components/FeedList.tsx": {
+    "mtime": 1795727934.3333473,
+    "ast_hash": "11980599661a35636b807b05f9d3c2b8",
+    "semantic_hash": "11980599661a35636b807b05f9d3c2b8"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/components/NewsCard.tsx": {
+    "mtime": 1795725519.2947638,
+    "ast_hash": "2e8e428b41031d6ab04288898b11d52a",
+    "semantic_hash": "2e8e428b41031d6ab04288898b11d52a"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/components/VideoPlayer.tsx": {
+    "mtime": 1795641545.6064668,
+    "ast_hash": "04969e29ce09e2b4d4390ee1ed300b2f",
+    "semantic_hash": "04969e29ce09e2b4d4390ee1ed300b2f"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/components/platformStyle.ts": {
+    "mtime": 1795725519.2947638,
+    "ast_hash": "e3b7ed08063ce5503b4f3ac1cb7762b4",
+    "semantic_hash": "e3b7ed08063ce5503b4f3ac1cb7762b4"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/eslint.config.mjs": {
+    "mtime": 1795630334.1167166,
+    "ast_hash": "dfa1f5f6a7037bf39dc510f30b180002",
+    "semantic_hash": "dfa1f5f6a7037bf39dc510f30b180002"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/lib/api.ts": {
+    "mtime": 1795727934.3315043,
+    "ast_hash": "fbe4e219ddd5b91e288b3c32262619fa",
+    "semantic_hash": "fbe4e219ddd5b91e288b3c32262619fa"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/lib/format.ts": {
+    "mtime": 1795631210.0378606,
+    "ast_hash": "7e2df48d13ca6bfa184073a5680a5990",
+    "semantic_hash": "7e2df48d13ca6bfa184073a5680a5990"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/lib/seen.ts": {
+    "mtime": 1795631994.408346,
+    "ast_hash": "20b221c102eea28385dda6c15a12ac58",
+    "semantic_hash": "20b221c102eea28385dda6c15a12ac58"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/lib/types.ts": {
+    "mtime": 1795727759.1066263,
+    "ast_hash": "c3c4967e9126687db49c876a8ceae2d6",
+    "semantic_hash": "c3c4967e9126687db49c876a8ceae2d6"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/lib/useLiveStatus.ts": {
+    "mtime": 1795631994.560346,
+    "ast_hash": "21d45afdb300f76dccde49a10d2d6456",
+    "semantic_hash": "21d45afdb300f76dccde49a10d2d6456"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/lib/useNow.ts": {
+    "mtime": 1795631209.9712949,
+    "ast_hash": "4723df9bde74bce619443119920fa8e3",
+    "semantic_hash": "4723df9bde74bce619443119920fa8e3"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/next.config.ts": {
+    "mtime": 1795630945.3552997,
+    "ast_hash": "c015a3fe4b0ba9631714397cb5fd9cf7",
+    "semantic_hash": "c015a3fe4b0ba9631714397cb5fd9cf7"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/package.json": {
+    "mtime": 1795641545.6064668,
+    "ast_hash": "b12fb0708ce1626274cbb864a18461f6",
+    "semantic_hash": "b12fb0708ce1626274cbb864a18461f6"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/postcss.config.mjs": {
+    "mtime": 1795641545.6064668,
+    "ast_hash": "239f3ebf717465dc636818a1a619398d",
+    "semantic_hash": "239f3ebf717465dc636818a1a619398d"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/tsconfig.json": {
+    "mtime": 1795630334.1182716,
+    "ast_hash": "02fc19ad21338c2ab820a70136310db4",
+    "semantic_hash": "02fc19ad21338c2ab820a70136310db4"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/AGENTS.md": {
+    "mtime": 1795630334.118644,
+    "ast_hash": "c98dbebb744eadc1acc4b9f58bfe0f42",
+    "semantic_hash": "c98dbebb744eadc1acc4b9f58bfe0f42"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/README.md": {
+    "mtime": 1795630334.1167166,
+    "ast_hash": "f15aaa42d5d299d091b1171097ea56ad",
+    "semantic_hash": "f15aaa42d5d299d091b1171097ea56ad"
+  }
+}

@@ -218,12 +218,15 @@ describe("YouTube repeats", () => {
 });
 
 describe("YouTube newest-first windows", () => {
-  it("continues inside an upload window, then widens it, then ends", async () => {
-    const { nextWindow, LATEST_WINDOWS } = await import("../src/sources/youtube.js");
+  it("reads each upload window in one page, continues only the last one, and drops uploads of earlier windows", async () => {
+    const { nextWindow, windowNewest, LATEST_WINDOWS } = await import("../src/sources/youtube.js");
     const continuation = { videos: [], has_continuation: true, getContinuation: async () => continuation };
-    expect(nextWindow(0, continuation)).toEqual({ window: 0, search: continuation });
-    expect(nextWindow(0, null)).toEqual({ window: 1 });
-    expect(nextWindow(LATEST_WINDOWS.length - 1, null)).toBeNull();
+    const last = LATEST_WINDOWS.length - 1;
+    expect(nextWindow({ window: 0, start: 1 }, continuation)).toEqual({ window: 1, start: 1 });
+    expect(nextWindow({ window: last, start: 1 }, continuation)).toEqual({ window: last, start: 1, search: continuation });
+    expect(nextWindow({ window: last, start: 1 }, null)).toBeNull();
+    expect(windowNewest({ window: 0, start: 0 })).toBe(Infinity);
+    expect(windowNewest({ window: 1, start: 86_400_000 })).toBe(0); // "this week" starts where "today" ended
   });
 });
 

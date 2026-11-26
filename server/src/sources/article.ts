@@ -5,6 +5,7 @@ import type { RawItem } from "../types.js";
 import { fetchText } from "./http.js";
 
 const ARTICLE_TIMEOUT_MS = 8_000;
+const ARTICLE_MAX_BYTES = 1024 * 1024; // the meta tags are in the <head>
 const DESCRIPTION_SELECTORS = ['meta[property="og:description"]', 'meta[name="description"]', 'meta[name="twitter:description"]'];
 const IMAGE_SELECTORS = ['meta[property="og:image"]', 'meta[property="og:image:url"]', 'meta[name="twitter:image"]', 'meta[name="twitter:image:src"]'];
 const BLOCKED_HOSTS = ["reddit.com", "redd.it"]; // Reddit answers 403 here; never worth the wait
@@ -41,7 +42,7 @@ export async function withArticleMeta(item: RawItem): Promise<RawItem> {
   const host = new URL(item.url).hostname;
   if (BLOCKED_HOSTS.some((h) => host === h || host.endsWith(`.${h}`))) return item;
   try {
-    const html = await fetchText(item.url, ARTICLE_TIMEOUT_MS);
+    const html = await fetchText(item.url, ARTICLE_TIMEOUT_MS, ARTICLE_MAX_BYTES);
     return {
       ...item,
       description: needsText ? parseMetaDescription(html) : item.description,

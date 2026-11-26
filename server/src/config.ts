@@ -28,6 +28,7 @@ export const config = {
   pythonBin: process.env.PYTHON_BIN ?? venvOr("python"),
   agentReachBin: process.env.AGENT_REACH_BIN ?? "agent-reach",
   quoraScript: path.join(ROOT, "scripts", "quora.py"),
+  snapshotFile: path.join(ROOT, "server", ".cache", "pool.json"), // stories kept across restarts (git-ignored)
   /** Optional: a Reddit "script" app (reddit.com/prefs/apps) for the official API. */
   redditClientId: process.env.REDDIT_CLIENT_ID ?? "",
   redditClientSecret: process.env.REDDIT_CLIENT_SECRET ?? "",

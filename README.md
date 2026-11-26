@@ -4,7 +4,7 @@
 
 ### Everything the internet is posting, on every interest, in one live feed
 
-YouTube · Reddit · Hacker News · 4chan · X / Twitter · Quora · news sites, merged into one endless, self-updating page.
+YouTube · Reddit · Hacker News · 4chan · X / Twitter · Bluesky · Quora · news sites, merged into one endless, self-updating page.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
@@ -25,7 +25,7 @@ YouTube · Reddit · Hacker News · 4chan · X / Twitter · Quora · news sites,
 
 ## Features
 
-- **Seven sources, one feed.** Stories from YouTube, Reddit, Hacker News, every work-safe 4chan board, X / Twitter, Quora and thousands of news sites, interleaved so no single platform takes over.
+- **Eight sources, one feed.** Stories from YouTube, Reddit, Hacker News, every work-safe 4chan board, X / Twitter, Bluesky, Quora and thousands of news sites, interleaved so no single platform takes over.
 - **Every interest, not just news.** 18 interests (news, tech, AI, gaming, music, movies & TV, anime, sports, science, money, food, fitness, travel, cars, fun, learning, art, books) drive what each platform is read for. Each refresh reads the next interests in turn, so all of them stay current.
 - **Live.** The server polls each platform on its own timer and pushes changes to the browser over Server-Sent Events. New stories slide in at the top on their own, or behind an "↑ N new stories" button if you have scrolled down.
 - **Endless scroll.** Every platform pages deeper as you scroll, back through its archive, so the feed and search do not run out.
@@ -37,7 +37,8 @@ YouTube · Reddit · Hacker News · 4chan · X / Twitter · Quora · news sites,
   - text-only posts show their own text.
 - **Heat score.** Each story gets a 0–100 heat score from engagement per hour and its growth since the last refresh. The fastest risers get a **Rising** badge.
 - **Search anything, including questions.** Searches every platform live and keeps paging as you scroll: "one piece" returns over 1,500 results across the first six pages, and "why is rice price rising" finds stories on six platforms. Question words are ignored; results must contain the topic's words, best matches come first, and when nothing has every keyword the search gives up generic words like "make" or "best" before topic words.
-- **Newest first, everywhere.** Hot and Latest work in the feed and in search; Latest search starts with today's posts on each platform.
+- **Fast.** The first search results show in about 1.5 s while slow platforms (X, Reddit) finish; the next page is prepared while you read. A full feed page never waits for a slow platform, and the server saves its stories to `server/.cache/pool.json` every 2 minutes, so a restart serves the feed at once.
+- **Newest first, everywhere.** Hot and Latest work in the feed and in search. Searches open in Latest: results from every platform are merged newest to oldest across every page, so scrolling never jumps back to newer posts.
 
 ## Quick start
 
@@ -94,8 +95,9 @@ flowchart LR
     HN[Hacker News<br/>Firebase + Algolia]
     FC[4chan<br/>catalogs + archives]
     TW[X / Twitter<br/>Agent Reach]
+    BS[Bluesky<br/>public API]
     QU[Quora<br/>Scrapling / Exa]
-    NW[News sites<br/>Google News RSS]
+    NW[News sites<br/>outlet feeds + Google News RSS]
   end
   Sources --> S[NewsStore<br/>pool, heat score, paging]
   S -- REST /api/feed --> W[Next.js site]
@@ -117,19 +119,20 @@ The project has three parts:
 | Hacker News | Top, best and new stories (Firebase), then every older story newest first (Algolia) | Every title match, then older date windows past Algolia's 1,000-hit limit | 1 min |
 | 4chan | Every live thread on all ~50 work-safe boards (1 request per second, 4chan's API rule) | Live threads plus archived threads from the FoolFuuka archives (desuarchive, b4k, palanq), up to 5,000 per query | 3 min |
 | Reddit | `hot` from Reddit across ~80 subreddits of all 18 interests (API keys or public JSON); when Reddit blocks the network, the same subreddits from the [Arctic Shift](https://arctic-shift.photon-reddit.com) archive, 3 interests per refresh, newest first | The query's own subreddits (Arctic Shift), matching posts from the subreddits that discuss it, and title matches across all of Reddit ([PullPush](https://pullpush.io)) | 2 min |
-| YouTube | "Hot today" and "latest today" for every interest, 4 streams per refresh, continued page after page ([youtubei.js](https://github.com/LuanRT/YouTube.js); yt-dlp as fallback) | YouTube's own search, every page; Latest reads today's uploads, then this week, month and year | 3 min |
+| YouTube | "Hot today" and "latest today" for every interest, 4 streams per refresh, continued page after page ([youtubei.js](https://github.com/LuanRT/YouTube.js); yt-dlp as fallback) | YouTube's own search, every page; Latest reads today's uploads, then this week, month and year (up to ~100 videos each, since YouTube cannot sort by date), then any time | 3 min |
 | X / Twitter | Agent Reach search, one interest per refresh (needs login) | Agent Reach search | 5 min |
+| Bluesky | Bluesky's "What's Hot" feed, page after page, plus the top posts of one interest per refresh (public API, no login); adult-labelled posts are dropped | Bluesky's own search, top or latest, 100 posts per page, paging back by date | 3 min |
 | Quora | World News topic (Scrapling), then Exa web search, one interest per refresh | 10 phrasings of the query's keywords, up to 100 results each, duplicates removed | 30 min |
-| News sites | Google News top stories plus today's news for one interest per refresh | [Google News](https://news.google.com) RSS: the most relevant (or today's) articles, then one week at a time going back | 5 min |
+| News sites | The outlets' own RSS / Atom feeds (41 feeds, e.g. BBC, NYT, The Verge, IGN, Variety, Space.com), with direct links, summaries and pictures: world news plus one interest per refresh; scrolling reads every interest's outlets, then Google News one week at a time going back | [Google News](https://news.google.com) RSS: the most relevant (or today's) articles, then one week at a time going back | 5 min |
 
-The interests and their subreddits live in [`server/src/sources/interests.ts`](server/src/sources/interests.ts); refresh intervals in [`server/src/sources/index.ts`](server/src/sources/index.ts).
+The interests, their subreddits and news outlets live in [`server/src/sources/interests.ts`](server/src/sources/interests.ts); refresh intervals in [`server/src/sources/index.ts`](server/src/sources/index.ts).
 
 ### API
 
 | Endpoint | Returns |
 |---|---|
 | `GET /api/feed?platform=&offset=&limit=&seed=&sort=` | A page of the feed. `platform` is `all` or one platform; `limit` is at most 60; `sort` is `hot` or `latest` |
-| `GET /api/search?q=&platform=&page=&sort=` | Search results, `hot` or `latest`, limited to 30 requests per minute per client |
+| `GET /api/search?q=&platform=&page=&sort=&fast=` | Search results, `hot` or `latest`, limited to 30 requests per minute per client. `fast=1` answers within about 1.5 s with what the quick platforms found (`partial: true`, slow ones in `pending`); ask again without it for the full page. The next page is built in the background |
 | `GET /api/status` | Each platform's story count, last update and error |
 | `GET /api/stream` | Server-Sent Events: `status` and `new` |
 
@@ -150,8 +153,9 @@ Set these as environment variables, or put them in `server/.env` (copy [`server/
 
 - **Reddit** blocks many networks (VPNs, shared ISP addresses) with HTTP 403. The server then reads the Arctic Shift and PullPush archives. Arctic Shift scores are snapshots taken when a post is archived, so the newest posts show low points; PullPush is about six weeks behind.
 - **X / Twitter** search needs you logged in to x.com in Agent Reach's own browser (`agent-reach login twitter`), and that login expires. When it is missing, X returns no results and Agent Reach reports "UPSTREAM_BROKEN: OpenCLI finished but returned no items", which looks like an outage but is a login problem.
-- **News sites** come from Google News RSS: cards show the headline, publisher and time but no image, and links open through news.google.com. Google limits quick bursts (HTTP 429), so requests are spaced 2 s apart and News pauses for 2 minutes after a 429.
-- **Facebook, Instagram and TikTok** are not included: they need a logged-in account and their rules forbid automated reading.
+- **News sites** in the feed come from the outlets' own feeds (listed per interest in [`interests.ts`](server/src/sources/interests.ts)); some outlets (the Guardian, ESPN) refuse automated readers and are left out. News search and the deep archive use Google News RSS: those cards show the headline, publisher and time but no image, and links open through news.google.com. Google limits quick bursts (HTTP 429), so requests are spaced 2 s apart and News pauses for 2 minutes after a 429.
+- **Facebook, Instagram, TikTok and Threads** are not included: they need a logged-in account and their rules forbid automated reading.
+- **Bluesky** videos are HLS streams, which browsers cannot play without a player library, so their cards show the thumbnail and open the post. Bluesky's search cursor needs a login, so deeper search pages ask for posts older than the last page instead.
 - **Quora** usually blocks automated browsers, so it comes from web search. Each search page spends Exa credit.
 - **4chan archives** cover 34 of the ~50 work-safe boards; the others (for example /tv/, /sp/, /lit/, /sci/) are searched in live threads only.
 - **Shared services.** Arctic Shift, PullPush and the 4chan archives are run by volunteers; the server limits how often it calls them, and they sometimes answer slowly.

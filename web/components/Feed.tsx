@@ -68,6 +68,7 @@ export function Feed() {
     e.preventDefault();
     queryRef.current = draft.trim();
     setQuery(draft.trim());
+    setSort("latest"); // searches open newest first, so readers see what is new on the topic
     window.scrollTo({ top: 0 });
   };
 
@@ -75,6 +76,7 @@ export function Feed() {
     setDraft("");
     queryRef.current = "";
     setQuery("");
+    setSort("hot");
   };
 
   const showNew = () => {

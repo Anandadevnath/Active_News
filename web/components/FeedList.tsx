@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getFeed, newSeed, searchNews } from "@/lib/api";
 import { loadSeen, recordSeen } from "@/lib/seen";
-import { PLATFORM_LABEL, type Filter, type NewsItem, type SearchPage, type Sort } from "@/lib/types";
+import { PLATFORM_LABEL, type Filter, type NewsItem, type Platform, type SearchPage, type Sort } from "@/lib/types";
 
 import { NewsCard } from "./NewsCard";
 
@@ -63,6 +63,7 @@ export function FeedList({ filter, sort, query, includeSeen, now, onPlayingChang
   const [error, setError] = useState<string | null>(null);
   const [hiddenCount, setHiddenCount] = useState(0);
   const [searchErrors, setSearchErrors] = useState<SearchPage["errors"]>([]);
+  const [pending, setPending] = useState<Platform[]>([]); // platforms still searching while a quick first page shows
 
   const cursor = useRef(0); // feed: server offset; search: page index
   const seed = useRef<number | null>(null); // one order per visit; set on first load
@@ -74,6 +75,18 @@ export function FeedList({ filter, sort, query, includeSeen, now, onPlayingChang
   const cardObserver = useRef<IntersectionObserver | null>(null);
   const isSearch = query.length > 0;
 
+  /** First search page: show what the quick platforms found right away, then swap in the full page. */
+  const firstSearchPage = useCallback(async () => {
+    const quick = await searchNews(query, filter, 0, sort, true);
+    if (!quick.partial) return quick;
+    setItems(quick.items);
+    setPending(quick.pending ?? []);
+    const full = await searchNews(query, filter, 0, sort);
+    setPending([]);
+    setItems([]); // batched with the full page's items below, so the quick ones never blink out
+    return full;
+  }, [query, filter, sort]);
+
   const loadMore = useCallback(async () => {
     if (busy.current) return;
     busy.current = true;
@@ -81,11 +94,15 @@ export function FeedList({ filter, sort, query, includeSeen, now, onPlayingChang
     seed.current ??= newSeed();
     try {
       for (let attempt = 0; attempt < MAX_EMPTY_PAGES; attempt += 1) {
-        const page = isSearch ? await searchNews(query, filter, cursor.current, sort) : await getFeed(filter, cursor.current, PAGE_SIZE, seed.current, sort);
+        const page = !isSearch
+          ? await getFeed(filter, cursor.current, PAGE_SIZE, seed.current, sort)
+          : cursor.current === 0
+            ? await firstSearchPage()
+            : await searchNews(query, filter, cursor.current, sort);
         cursor.current += isSearch ? 1 : page.items.length;
         if ("errors" in page && attempt === 0 && cursor.current === 1) setSearchErrors(page.errors);
-        const unique = page.items.filter((i) => !ids.current.has(i.id));
-        unique.forEach((i) => ids.current.add(i.id));
+        // check and record in one step, so a repeat inside a page or from an overlapping load is dropped too
+        const unique = page.items.filter((i) => !ids.current.has(i.id) && Boolean(ids.current.add(i.id)));
         const visible = unique.filter((i) => !hidden.current!.has(i.id));
         setHiddenCount((n) => n + unique.length - visible.length);
         setItems((prev) => [...prev, ...visible]);
@@ -94,11 +111,12 @@ export function FeedList({ filter, sort, query, includeSeen, now, onPlayingChang
         if (visible.length > 0 || !page.hasMore || page.items.length === 0) break;
       }
     } catch (err) {
+      setPending([]);
       setError(err instanceof Error ? err.message : "Could not load stories.");
     } finally {
       busy.current = false;
     }
-  }, [filter, sort, query, includeSeen, isSearch]);
+  }, [filter, sort, query, includeSeen, isSearch, firstSearchPage]);
 
   // Load the next page whenever the bottom sentinel comes near the viewport.
   useEffect(() => {
@@ -185,6 +203,11 @@ export function FeedList({ filter, sort, query, includeSeen, now, onPlayingChang
       {items.length > 0 && (
         <>
           <h2 className="mb-4 flex items-center gap-3 text-xs font-bold tracking-[0.14em] text-zinc-400 uppercase after:h-px after:flex-1 after:bg-white/10">{isSearch ? `${sort === "latest" ? "Newest results" : "Results"} for “${query}”` : sort === "latest" ? "Newest first" : "Being discussed"}</h2>
+          {pending.length > 0 && (
+            <p className="-mt-2 mb-4 text-xs text-zinc-500 motion-safe:animate-pulse" aria-live="polite">
+              Still searching {pending.map((p) => PLATFORM_LABEL[p]).join(", ")}…
+            </p>
+          )}
           <div className={GRID}>
             {items.map((item) => (
               <NewsCard key={item.id} item={item} now={now} fresh={false} cardRef={observeCard} onPlayingChange={onPlayingChange} />

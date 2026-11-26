@@ -23,6 +23,7 @@ export function newSeed(): number {
   return Math.floor(Math.random() * 2_147_483_647);
 }
 
-export function searchNews(query: string, filter: Filter, page: number, sort: Sort, signal?: AbortSignal): Promise<SearchPage> {
-  return getJson<SearchPage>("/api/search", { q: query, platform: filter, page: String(page), sort }, signal);
+/** `fast`: answer within ~1.5s with what the quick platforms found (`partial`); ask again without it for the full page. */
+export function searchNews(query: string, filter: Filter, page: number, sort: Sort, fast = false, signal?: AbortSignal): Promise<SearchPage> {
+  return getJson<SearchPage>("/api/search", { q: query, platform: filter, page: String(page), sort, ...(fast ? { fast: "1" } : {}) }, signal);
 }

@@ -4,17 +4,18 @@ import { filterByQuery } from "../feed.js";
 import type { Page, RawItem, Sort } from "../types.js";
 import { fetchText } from "./http.js";
 import { INTERESTS, rotation, stepOf } from "./interests.js";
+import { readOutlets } from "./outlets.js";
 import { QueryPager, type CursorPage } from "./pager.js";
 import { spaced } from "./spaced.js";
 
 /**
  * News sites through Google News RSS: any topic or question, from thousands of outlets. Search pages
- * back in time one week at a time (`after:` / `before:`), so it does not run out. The feed has no images.
+ * back in time one week at a time (`after:` / `before:`), so it does not run out. Its items have no images, so the
+ * feed reads the outlets' own feeds first (outlets.ts) and pages on through Google News after them.
  * Google answers 429 to quick bursts, so requests go one at a time, are cached, and pause after a 429.
  */
 const BASE = "https://news.google.com/rss";
 const LOCALE = "hl=en-US&gl=US&ceid=US:en";
-const TOP_URL = `${BASE}?${LOCALE}`;
 const GAP_MS = 2_000;
 const CACHE_TTL_MS = 5 * 60_000;
 const CACHE_MAX = 200;
@@ -112,25 +113,29 @@ export async function searchNews(query: string, page: number, sort: Sort = "hot"
     if (week !== undefined) return weekPage(query, week);
     return { items: await getFeed(searchUrl(sort === "latest" ? `${query} when:1d` : query)), next: 1 };
   });
-  return filterByQuery(items, (i) => i.title, query);
+  // latest: today's articles came on page 0 (when:1d); the weeks after it skip them so pages stay newest first
+  const dayAgo = Date.now() - DAY_MS;
+  const fresh = sort === "latest" && page > 0 ? items.filter((i) => !i.publishedAt || Date.parse(i.publishedAt) < dayAgo) : items;
+  return filterByQuery(fresh, (i) => i.title, query);
 }
 
 const nextTopic = rotation(INTERESTS.length, 1);
 
 /**
- * cursor null (live refresh): top stories plus today's news for the next interest in turn.
- * cursor = step n -> interest n % N, week floor(n / N) + 1 back in time. Never runs out.
+ * cursor null (live refresh): the world-news outlets plus the next interest's outlets, in turn. Their stories link
+ * straight to the article and carry a picture; Google News items do not, so they only come after every outlet.
+ * cursor = step n < N -> interest n's outlet feeds; after them, step N + m -> interest m % N, week floor(m / N) + 1
+ * back in time on Google News. Never runs out.
  */
 export async function fetchNews(cursor: string | null): Promise<Page> {
   if (cursor === null) {
     const interest = INTERESTS[nextTopic()[0]!]!;
-    const pages = await Promise.allSettled([getFeed(TOP_URL), getFeed(searchUrl(`${interest.query} when:1d`))]);
-    const items = pages.flatMap((p) => (p.status === "fulfilled" ? p.value : []));
-    if (items.length === 0) throw (pages.find((p) => p.status === "rejected") as PromiseRejectedResult | undefined)?.reason ?? new Error("Google News returned no articles");
-    return { items, next: "0" };
+    return { items: await readOutlets([...new Set([...INTERESTS[0]!.feeds, ...interest.feeds])]), next: "0" };
   }
   const step = stepOf(cursor);
-  const interest = INTERESTS[step % INTERESTS.length]!;
-  const week = Math.floor(step / INTERESTS.length) + 1;
+  if (step < INTERESTS.length) return { items: await readOutlets(INTERESTS[step]!.feeds), next: String(step + 1) };
+  const back = step - INTERESTS.length;
+  const interest = INTERESTS[back % INTERESTS.length]!;
+  const week = Math.floor(back / INTERESTS.length) + 1;
   return { items: await getFeed(searchUrl(weekQuery(interest.query, week))), next: String(step + 1) };
 }
