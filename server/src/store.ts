@@ -1,11 +1,11 @@
 import { EventEmitter } from "node:events";
 
-import { byHeat, interleave, shuffleByHeat } from "./feed.js";
+import { byHeat, byTime, interleave, shuffleByHeat } from "./feed.js";
 import { itemId, rememberEngagement, scoreItems, type Seen } from "./heat.js";
 import type { SourceDef } from "./sources/index.js";
-import type { FeedPage, Filter, NewsItem, Platform, RawItem, SourceStatus } from "./types.js";
+import type { FeedPage, Filter, NewsItem, Platform, RawItem, Sort, SourceStatus } from "./types.js";
 
-const MAX_POOL = 1500; // per platform; least recently seen stories are dropped first
+const MAX_POOL = 20_000; // per platform; least recently seen stories are dropped first (deeper ones are re-fetched on demand)
 const PREFETCH = 30; // load deeper pages when a reader gets this close to the end
 const LOAD_MORE_TIMEOUT_MS = 30_000; // when the requested page cannot be filled yet
 const FULL_PAGE_WAIT_MS = 3_000; // when it can: slow platforms finish in the background
@@ -32,6 +32,7 @@ export class NewsStore extends EventEmitter {
   private engagement = new Map<Platform, Map<string, Seen>>();
   private loading = new Map<Platform, Promise<void>>();
   private combined: readonly NewsItem[] | null = null;
+  private latest = new Map<Filter, readonly NewsItem[]>(); // newest-first lists, rebuilt after each rescore
   private timers: NodeJS.Timeout[] = [];
 
   constructor(
@@ -56,7 +57,8 @@ export class NewsStore extends EventEmitter {
    * Every collected story, scored. "all" takes one story from each platform per round (hottest
    * first within the round), so deep scrolling stays mixed instead of draining into the biggest pool.
    */
-  items(filter: Filter = "all", seed?: number): readonly NewsItem[] {
+  items(filter: Filter = "all", seed?: number, sort: Sort = "hot"): readonly NewsItem[] {
+    if (sort === "latest") return this.newest(filter);
     const ordered = (p: Platform) => {
       const list = this.scored.get(p) ?? [];
       return seed === undefined ? list : shuffleByHeat(list, seed);
@@ -67,9 +69,29 @@ export class NewsStore extends EventEmitter {
     return this.combined;
   }
 
+  /**
+   * Every collected story newest first; undated stories go last, hottest first among them. "all" takes the
+   * newest remaining story of each platform per round, so a platform with thousands of posts (4chan) cannot bury the rest.
+   */
+  private newest(filter: Filter): readonly NewsItem[] {
+    const cached = this.latest.get(filter);
+    if (cached) return cached;
+    const sorted = (p: Platform) => [...(this.scored.get(p) ?? [])].sort(byTime);
+    const list =
+      filter === "all"
+        ? (() => {
+            const lists = this.platforms().map(sorted);
+            const rounds = Math.max(0, ...lists.map((l) => l.length));
+            return Array.from({ length: rounds }, (_, r) => lists.flatMap((l) => (l[r] ? [l[r]] : [])).sort(byTime)).flat();
+          })()
+        : sorted(filter);
+    this.latest.set(filter, list);
+    return list;
+  }
+
   /** Platforms whose stories run out within the reader's next screenful and can still fetch more. */
-  private needMore(filter: Filter, upTo: number, seed?: number): Platform[] {
-    const window = this.items(filter, seed).slice(0, upTo);
+  private needMore(filter: Filter, upTo: number, seed?: number, sort: Sort = "hot"): Platform[] {
+    const window = this.items(filter, seed, sort).slice(0, upTo);
     const targets = filter === "all" ? this.platforms() : [filter];
     return targets.filter((p) => {
       if (!this.sources[p] || this.cursors.get(p) === null || this.status.get(p)?.error) return false;
@@ -109,6 +131,7 @@ export class NewsStore extends EventEmitter {
     this.engagement.set(platform, rememberEngagement(items, at));
     this.scored.set(platform, items.sort(byHeat));
     this.combined = null;
+    this.latest.clear();
   }
 
   private async run(platform: Platform, task: () => Promise<void>): Promise<void> {
@@ -179,10 +202,10 @@ export class NewsStore extends EventEmitter {
    * Waits up to 30s when the requested page cannot be filled yet, else at most 3s.
    * `seed` (one per visit) shuffles stories of similar heat so each reload leads with different ones.
    */
-  async feed(filter: Filter, offset: number, limit: number, seed?: number): Promise<FeedPage> {
+  async feed(filter: Filter, offset: number, limit: number, seed?: number, sort: Sort = "hot"): Promise<FeedPage> {
     const deadline = this.now() + LOAD_MORE_TIMEOUT_MS;
     for (let round = 0; round < MAX_LOAD_ROUNDS; round += 1) {
-      const targets = this.needMore(filter, offset + limit + PREFETCH, seed);
+      const targets = this.needMore(filter, offset + limit + PREFETCH, seed, sort);
       if (targets.length === 0) break;
       const before = this.items(filter).length;
       const loads = Promise.allSettled(targets.map((p) => this.loadMore(p)));
@@ -192,7 +215,7 @@ export class NewsStore extends EventEmitter {
       await Promise.race([loads, timeout]);
       if (this.items(filter).length === before || this.now() >= until) break; // nothing new or out of time
     }
-    const list = this.items(filter, seed);
+    const list = this.items(filter, seed, sort);
     return { items: list.slice(offset, offset + limit), hasMore: list.length > offset + limit || this.canGrow(filter), total: list.length };
   }
 

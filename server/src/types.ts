@@ -1,6 +1,6 @@
 // Keep in sync with web/lib/types.ts (the browser-side copy).
 
-export const PLATFORMS = ["youtube", "reddit", "hackernews", "4chan", "twitter", "quora"] as const;
+export const PLATFORMS = ["youtube", "reddit", "hackernews", "4chan", "twitter", "quora", "news"] as const;
 export type Platform = (typeof PLATFORMS)[number];
 
 export type Video = { kind: "youtube"; id: string } | { kind: "file"; url: string };
@@ -60,3 +60,6 @@ export interface SearchPage {
 }
 
 export type Filter = Platform | "all";
+
+/** hot: heat, shuffled per visit; latest: newest first. */
+export type Sort = "hot" | "latest";

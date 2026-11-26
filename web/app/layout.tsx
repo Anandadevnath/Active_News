@@ -8,7 +8,7 @@ const serif = Newsreader({ variable: "--font-newsreader", subsets: ["latin"], st
 
 export const metadata: Metadata = {
   title: "Active News",
-  description: "Live news being discussed right now on YouTube, Reddit, Hacker News, 4chan, X and Quora.",
+  description: "Everything being posted right now on YouTube, Reddit, Hacker News, 4chan, X, Quora and news sites, on every interest, in one feed.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -6,7 +6,7 @@ import { parseHnItem } from "../src/sources/hackernews.js";
 import { parseQuoraOutput } from "../src/sources/quora.js";
 import { parseReachOutput } from "../src/sources/reach.js";
 import { parseListing } from "../src/sources/reddit.js";
-import { parseEntry, searchUrl } from "../src/sources/youtube.js";
+import { parseEntry, relativeToIso, videoToEntry } from "../src/sources/youtube.js";
 
 describe("hacker news", () => {
   it("uses the discussion link when a story has no url", () => {
@@ -48,9 +48,20 @@ describe("youtube", () => {
     expect(parseEntry({ title: "no id" })).toBeNull();
   });
 
-  it("asks for today's videos sorted by views", () => {
-    expect(searchUrl("a b")).toContain("search_query=a%20b");
-    expect(searchUrl("news")).toContain("sp=CAMSBAgCEAE%253D");
+  it("turns YouTube's relative upload times into dates", () => {
+    const now = Date.parse("2026-11-26T12:00:00Z");
+    expect(relativeToIso("3 hours ago", now)).toBe("2026-11-26T09:00:00.000Z");
+    expect(relativeToIso("Streamed 2 days ago", now)).toBe("2026-11-24T12:00:00.000Z");
+    expect(relativeToIso("5 minutes ago", now)).toBe("2026-11-26T11:55:00.000Z");
+    expect(relativeToIso("1 month ago", now)).toBe("2026-10-27T12:00:00.000Z");
+    expect(relativeToIso("2y ago", now)).toBe("2024-11-26T12:00:00.000Z");
+    expect(relativeToIso(undefined, now)).toBeNull();
+  });
+
+  it("maps a youtubei.js video into an entry with numeric views", () => {
+    const text = (s: string) => ({ toString: () => s });
+    const entry = videoToEntry({ id: "dQw4w9WgXcQ", title: text("T"), author: { name: "C" }, view_count: text("4,196,544 views"), published: text("2y ago") });
+    expect(entry).toMatchObject({ id: "dQw4w9WgXcQ", title: "T", channel: "C", view_count: 4196544, published: "2y ago" });
   });
 });
 
@@ -153,5 +164,87 @@ describe("Reddit search markdown without a comments heading", () => {
     const { parseRedditText } = await import("../src/sources/reddit-text.js");
     const text = "# T\n\nPosted by **u/a** in r/science · 5 points · 2 comments · October 26, 2026 at 2:16 PM UTC\n\nhttps://news.umich.edu/x\n\n...\n\n**u/b** · 617 points · October 26, 2026 at 2:16 PM UTC\n> A cavity is not always drilling.";
     expect(parseRedditText(text)).toMatchObject({ linkUrl: "https://news.umich.edu/x", body: "", topComment: "A cavity is not always drilling." });
+  });
+});
+
+describe("search matching", () => {
+  it("drops question words and needs names as a whole phrase", async () => {
+    const { keywords, matchesQuery } = await import("../src/feed.js");
+    expect(keywords("Why is the rice price rising?")).toEqual(["rice", "price", "rising"]);
+    expect(keywords("what is it")).toEqual(["what", "is", "it"]); // only stop words: keep them all
+    expect(matchesQuery("Elden Ring general - Nightreign DLC thread", "elden ring")).toBe(true);
+    expect(matchesQuery("ring elden", "elden ring")).toBe(false);
+    expect(matchesQuery("One  Piece!", "one piece")).toBe(true);
+    expect(matchesQuery("one big piece of cake", "one piece")).toBe(false);
+    expect(matchesQuery("one of the best pieces of tech", "one piece")).toBe(false);
+  });
+
+  it("matches every keyword of a question in any order, then drops keywords from the end when nothing does", async () => {
+    const { filterByQuery, matchesQuery } = await import("../src/feed.js");
+    expect(matchesQuery("Rice prices keep rising in Japan", "why is rice price rising")).toBe(true);
+    expect(matchesQuery("Coal prices rising", "why is rice price rising")).toBe(false);
+    const titles = ["Why are rice prices still high?", "Coal prices rising"];
+    expect(filterByQuery(titles, (t) => t, "rice price rising")).toEqual(["Why are rice prices still high?"]);
+    expect(filterByQuery(["Rice prices rising fast", ...titles], (t) => t, "rice price rising")).toEqual(["Rice prices rising fast"]);
+  });
+
+  it("gives up generic words like 'make' before topic words, and ranks titles by keywords matched", async () => {
+    const { dropOrder, filterByQuery, keywords, relevance } = await import("../src/feed.js");
+    const query = "how to make anime website";
+    expect(dropOrder(keywords(query))).toEqual(["anime", "website", "make"]);
+    const titles = ["Studio Ghibli makes 38 albums of anime music", "Show HN: an anime websites directory", "Make a website in 10 minutes"];
+    expect(filterByQuery(titles, (t) => t, query)).toEqual(["Show HN: an anime websites directory"]);
+    expect(titles.map((t) => relevance(t, query))).toEqual([2, 2, 2]);
+    expect(relevance("How I made my anime website", query)).toBe(2); // "made" is not "make"
+    expect(relevance("Make an anime website with React", query)).toBe(3);
+  });
+});
+
+describe("refresh rotation", () => {
+  it("covers every index before repeating", async () => {
+    const { rotation } = await import("../src/sources/interests.js");
+    const next = rotation(5, 2);
+    expect([next(), next(), next()]).toEqual([[0, 1], [2, 3], [4, 0]]);
+  });
+});
+
+describe("YouTube repeats", () => {
+  it("keeps one video per channel and title, ignoring hashtags", async () => {
+    const { dropRepeats } = await import("../src/sources/youtube.js");
+    const v = (id: string, title: string, author = "Paji") => parseEntry({ id: id.repeat(11), title, channel: author })!;
+    const kept = dropRepeats([v("a", "GTA 5 LIVE #gta5 #shorts"), v("b", "GTA 5 LIVE #gta5 #pajiislive"), v("c", "GTA 5 LIVE", "Other"), v("d", "Elden Ring tips")]);
+    expect(kept.map((i) => i.url.slice(-11))).toEqual(["aaaaaaaaaaa", "ccccccccccc", "ddddddddddd"]);
+  });
+});
+
+describe("YouTube newest-first windows", () => {
+  it("continues inside an upload window, then widens it, then ends", async () => {
+    const { nextWindow, LATEST_WINDOWS } = await import("../src/sources/youtube.js");
+    const continuation = { videos: [], has_continuation: true, getContinuation: async () => continuation };
+    expect(nextWindow(0, continuation)).toEqual({ window: 0, search: continuation });
+    expect(nextWindow(0, null)).toEqual({ window: 1 });
+    expect(nextWindow(LATEST_WINDOWS.length - 1, null)).toBeNull();
+  });
+});
+
+describe("Hacker News date windows", () => {
+  it("pages inside a window, then opens an older window past Algolia's 1,000-hit limit", async () => {
+    const { nextHnCursor } = await import("../src/sources/hackernews.js");
+    const hits = [{ objectID: "1", created_at_i: 500 }, { objectID: "2", created_at_i: 300 }];
+    expect(nextHnCursor({ page: 0, before: null }, { hits, nbPages: 5 }, 50)).toEqual({ page: 1, before: null });
+    expect(nextHnCursor({ page: 19, before: null }, { hits, nbPages: 20 }, 50)).toEqual({ page: 0, before: 300 });
+    expect(nextHnCursor({ page: 0, before: 300 }, { hits: [], nbPages: 0 }, 50)).toBeNull();
+  });
+});
+
+describe("4chan archive posts", () => {
+  it("links to the archived thread, strips reply links, and keeps only https thumbnails", async () => {
+    const { parseArchivePost } = await import("../src/sources/fourchan.js");
+    const item = parseArchivePost(
+      { num: "12", thread_num: "10", title: null, comment: ">>11 One Piece is peak", timestamp: 1795687486, board: { shortname: "a" }, media: { thumb_link: "http://x/t.jpg" } },
+      "desuarchive.org",
+    );
+    expect(item).toMatchObject({ title: "One Piece is peak", url: "https://desuarchive.org/a/thread/10/#12", author: "/a/", thumbnail: null });
+    expect(parseArchivePost({ num: "1", comment: "no thread" }, "desuarchive.org")).toBeNull();
   });
 });

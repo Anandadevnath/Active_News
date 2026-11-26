@@ -16,9 +16,9 @@ vi.mock("../src/sources/http.js", () => ({
 }));
 
 const { fetchTwitter } = await import("../src/sources/twitter.js");
-const { fetchReddit } = await import("../src/sources/reddit.js");
 const { fetchQuora } = await import("../src/sources/quora.js");
-const { TOPICS } = await import("../src/sources/topics.js");
+const { INTERESTS } = await import("../src/sources/interests.js");
+const TOPICS = INTERESTS.map((i) => i.query);
 
 beforeEach(() => {
   runReach.mockClear();
@@ -34,19 +34,11 @@ describe("endless paging for sources without real cursors", () => {
     expect(wrapped.next).toBe(String(TOPICS.length + 1));
   });
 
-  it("Reddit falls back to Agent Reach and keeps a reach cursor going", async () => {
-    const first = await fetchReddit(null);
-    expect(first.next).toBe("reach:2");
-    const second = await fetchReddit(first.next);
-    expect(second.next).toBe("reach:3");
-    expect(second.items).toHaveLength(1);
-  });
-
   it("Quora deeper pages search a new topic and never return a null cursor", async () => {
     const first = await fetchQuora(null);
     expect(first.next).toBe("2");
     const deeper = await fetchQuora("3");
-    expect(runReach.mock.calls.at(-1)![1].join(" ")).toContain(`site:quora.com ${TOPICS[3]}`);
+    expect(runReach.mock.calls.at(-1)![1].join(" ")).toContain(TOPICS[3]!);
     expect(deeper.next).toBe("4");
   });
 });

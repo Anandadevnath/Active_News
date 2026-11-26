@@ -1,4 +1,4 @@
-import type { FeedPage, Filter, SearchPage } from "./types";
+import type { FeedPage, Filter, SearchPage, Sort } from "./types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -11,10 +11,10 @@ async function getJson<T extends { items: unknown }>(path: string, params: Recor
 }
 
 /** `seed` picks this visit's order; keep it for every page of one visit so paging stays consistent. */
-export function getFeed(filter: Filter, offset: number, limit: number, seed: number, signal?: AbortSignal): Promise<FeedPage> {
+export function getFeed(filter: Filter, offset: number, limit: number, seed: number, sort: Sort, signal?: AbortSignal): Promise<FeedPage> {
   return getJson<FeedPage>(
     "/api/feed",
-    { platform: filter, offset: String(offset), limit: String(limit), seed: String(seed) },
+    { platform: filter, offset: String(offset), limit: String(limit), seed: String(seed), sort },
     signal,
   );
 }
@@ -23,6 +23,6 @@ export function newSeed(): number {
   return Math.floor(Math.random() * 2_147_483_647);
 }
 
-export function searchNews(query: string, filter: Filter, page: number, signal?: AbortSignal): Promise<SearchPage> {
-  return getJson<SearchPage>("/api/search", { q: query, platform: filter, page: String(page) }, signal);
+export function searchNews(query: string, filter: Filter, page: number, sort: Sort, signal?: AbortSignal): Promise<SearchPage> {
+  return getJson<SearchPage>("/api/search", { q: query, platform: filter, page: String(page), sort }, signal);
 }

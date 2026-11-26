@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState, type FormEvent } from "react";
 
 import { timeAgo } from "@/lib/format";
-import { PLATFORM_LABEL, PLATFORMS, fixHint, type Filter, type Platform } from "@/lib/types";
+import { PLATFORM_LABEL, PLATFORMS, fixHint, type Filter, type Platform, type Sort } from "@/lib/types";
 import { useLiveStatus, type ConnectionStatus } from "@/lib/useLiveStatus";
 import { useNow } from "@/lib/useNow";
 
@@ -34,6 +34,7 @@ const STATUS_TEXT: Record<ConnectionStatus, string> = {
 
 export function Feed() {
   const [filter, setFilter] = useState<Filter>("all");
+  const [sort, setSort] = useState<Sort>("hot");
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   const [includeSeen, setIncludeSeen] = useState(false);
@@ -96,8 +97,8 @@ export function Feed() {
               type="search"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder="Search what is being discussed…"
-              aria-label="Search news"
+              placeholder="Search any topic or question…"
+              aria-label="Search every platform"
               maxLength={120}
               className="min-w-0 flex-1 bg-transparent px-4 py-1.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
             />
@@ -122,6 +123,13 @@ export function Feed() {
         </div>
 
         <nav className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]" aria-label="Platforms">
+          <button type="button" className={CHIP} aria-pressed={sort === "hot"} onClick={() => setSort("hot")} title={query ? "Most relevant and discussed first" : "Most discussed right now"}>
+            Hot
+          </button>
+          <button type="button" className={CHIP} aria-pressed={sort === "latest"} onClick={() => setSort("latest")} title="Newest posts first">
+            Latest
+          </button>
+          <span aria-hidden="true" className="mx-1 w-px shrink-0 self-stretch bg-white/10" />
           <button type="button" className={CHIP} aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
             All platforms
           </button>
@@ -171,8 +179,9 @@ export function Feed() {
         )}
 
         <FeedList
-          key={`${filter}|${query}|${includeSeen}|${version}`}
+          key={`${filter}|${sort}|${query}|${includeSeen}|${version}`}
           filter={filter}
+          sort={sort}
           query={query}
           includeSeen={includeSeen}
           now={now}

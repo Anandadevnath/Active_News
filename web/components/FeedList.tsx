@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getFeed, newSeed, searchNews } from "@/lib/api";
 import { loadSeen, recordSeen } from "@/lib/seen";
-import { PLATFORM_LABEL, type Filter, type NewsItem, type SearchPage } from "@/lib/types";
+import { PLATFORM_LABEL, type Filter, type NewsItem, type SearchPage, type Sort } from "@/lib/types";
 
 import { NewsCard } from "./NewsCard";
 
@@ -44,6 +44,7 @@ const SEEN_VISIBLE_RATIO = 0.6;
 
 interface FeedListProps {
   filter: Filter;
+  sort: Sort;
   query: string; // empty = live feed, otherwise search
   includeSeen: boolean;
   now: number | null;
@@ -56,7 +57,7 @@ interface FeedListProps {
  * seen (snapshot taken on mount, so a reload starts with fresh stories). Search mode pages /api/search.
  * Remount (change `key`) to start over.
  */
-export function FeedList({ filter, query, includeSeen, now, onPlayingChange, onShowSeen }: FeedListProps) {
+export function FeedList({ filter, sort, query, includeSeen, now, onPlayingChange, onShowSeen }: FeedListProps) {
   const [items, setItems] = useState<NewsItem[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +81,7 @@ export function FeedList({ filter, query, includeSeen, now, onPlayingChange, onS
     seed.current ??= newSeed();
     try {
       for (let attempt = 0; attempt < MAX_EMPTY_PAGES; attempt += 1) {
-        const page = isSearch ? await searchNews(query, filter, cursor.current) : await getFeed(filter, cursor.current, PAGE_SIZE, seed.current);
+        const page = isSearch ? await searchNews(query, filter, cursor.current, sort) : await getFeed(filter, cursor.current, PAGE_SIZE, seed.current, sort);
         cursor.current += isSearch ? 1 : page.items.length;
         if ("errors" in page && attempt === 0 && cursor.current === 1) setSearchErrors(page.errors);
         const unique = page.items.filter((i) => !ids.current.has(i.id));
@@ -97,7 +98,7 @@ export function FeedList({ filter, query, includeSeen, now, onPlayingChange, onS
     } finally {
       busy.current = false;
     }
-  }, [filter, query, includeSeen, isSearch]);
+  }, [filter, sort, query, includeSeen, isSearch]);
 
   // Load the next page whenever the bottom sentinel comes near the viewport.
   useEffect(() => {
@@ -183,7 +184,7 @@ export function FeedList({ filter, query, includeSeen, now, onPlayingChange, onS
 
       {items.length > 0 && (
         <>
-          <h2 className="mb-4 flex items-center gap-3 text-xs font-bold tracking-[0.14em] text-zinc-400 uppercase after:h-px after:flex-1 after:bg-white/10">{isSearch ? `Results for “${query}”` : "Being discussed"}</h2>
+          <h2 className="mb-4 flex items-center gap-3 text-xs font-bold tracking-[0.14em] text-zinc-400 uppercase after:h-px after:flex-1 after:bg-white/10">{isSearch ? `${sort === "latest" ? "Newest results" : "Results"} for “${query}”` : sort === "latest" ? "Newest first" : "Being discussed"}</h2>
           <div className={GRID}>
             {items.map((item) => (
               <NewsCard key={item.id} item={item} now={now} fresh={false} cardRef={observeCard} onPlayingChange={onPlayingChange} />

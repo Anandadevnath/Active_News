@@ -38,7 +38,8 @@ function NewsCardImpl({ item, now, fresh, cardRef, onPlayingChange }: NewsCardPr
   const accent = ACCENT[item.platform];
   const metrics = metricsText(item);
   const hasMedia = Boolean(item.video || thumb);
-  const host = href ? new URL(href).hostname.replace(/^www\./, "") : null;
+  const linkHost = href ? new URL(href).hostname.replace(/^www\./, "") : null;
+  const host = item.platform === "news" && item.author ? item.author : linkHost; // Google News links all go through news.google.com: name the publisher
 
   return (
     // No box: a thin platform-colored rule separates stories; every slot has a fixed size so all stories match.

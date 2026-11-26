@@ -1,46 +1,41 @@
 import { clip, decodeEntities, epochIso, videoFor, youtubeThumb } from "../media.js";
 import type { Page, RawItem } from "../types.js";
 import { fetchJson } from "./http.js";
-import { withArticleMeta } from "./article.js";
-import { runReach } from "./reach.js";
+import { ARCTIC_CURSOR, arcticRefresh, arcticSearchPage, arcticStep, type RedditSearchCursor } from "./arctic.js";
+import { INTERESTS } from "./interests.js";
 import { hasRedditApi, redditApiGet } from "./reddit-api.js";
-import { topicAt } from "./topics.js";
+import { QueryPager } from "./pager.js";
 
-export const SUBREDDITS = [
-  "worldnews", "news", "technology", "politics", "science",
-  "business", "geopolitics", "UpliftingNews", "Futurology", "europe",
-];
+/** Every interest's subreddits (news, gaming, music, sports, ...). */
+export const SUBREDDITS = INTERESTS.flatMap((i) => i.subreddits);
 const PAGE_SIZE = 50;
-const SEARCH_PAGE_SIZE = 25;
-const FALLBACK_PER_SUB = 10;
-const FALLBACK_SUBS = 2; // subreddits searched on the first fallback page; deeper pages search one each
-const REACH_CURSOR = "reach:";
+const SEARCH_PAGE_SIZE = 50;
 
-interface RedditPost {
-  data: {
-    title: string;
-    permalink: string;
-    url?: string;
-    author?: string;
-    selftext?: string;
-    score?: number;
-    num_comments?: number;
-    created_utc?: number;
-    stickied?: boolean;
-    subreddit?: string;
-    media?: { reddit_video?: { fallback_url?: string } } | null;
-    preview?: { images?: { source?: { url?: string } }[] };
-  };
+export interface RedditPostData {
+  title: string;
+  permalink: string;
+  url?: string;
+  author?: string;
+  selftext?: string;
+  score?: number;
+  num_comments?: number;
+  created_utc?: number;
+  stickied?: boolean;
+  over_18?: boolean;
+  removed_by_category?: string | null;
+  subreddit?: string;
+  media?: { reddit_video?: { fallback_url?: string } } | null;
+  preview?: { images?: { source?: { url?: string } }[] };
 }
 
 interface Listing {
-  data?: { children?: RedditPost[]; after?: string | null };
+  data?: { children?: { data: RedditPostData }[]; after?: string | null };
 }
 
 export function parseListing(listing: Listing): RawItem[] {
   return (listing.data?.children ?? [])
     .map((c) => c.data)
-    .filter((p) => !p.stickied)
+    .filter((p) => !p.stickied && !p.removed_by_category && !/^\[\s*(removed|deleted)/i.test(p.title) && p.selftext !== "[removed]")
     .map((p) => {
       const discussionUrl = `https://www.reddit.com${p.permalink}`;
       const url = p.url && !p.url.startsWith("/") ? p.url : discussionUrl;
@@ -61,49 +56,15 @@ export function parseListing(listing: Listing): RawItem[] {
     });
 }
 
-/**
- * Agent Reach's `subreddit` action (latest posts) needs its opencli backend plus a Reddit login
- * (`agent-reach login reddit --import-existing`) when Reddit blocks the IP; if it fails, the `search`
- * action falls back to public web search (Exa).
- * Step n searches subreddit n (wrapping) with a topic that changes each lap, so it never runs out.
- */
-async function viaAgentReach(step: number, count: number): Promise<RawItem[]> {
-  const steps = Array.from({ length: count }, (_, i) => step + i);
-  const settled = await Promise.allSettled(
-    steps.map((n) => {
-      const sub = SUBREDDITS[n % SUBREDDITS.length];
-      const topic = topicAt(Math.floor(n / SUBREDDITS.length));
-      return runReach("reddit", ["reddit", "subreddit", sub!, "--limit", String(FALLBACK_PER_SUB)]).catch(() =>
-        runReach("reddit", ["reddit", "search", `r/${sub} ${topic}`, "--limit", String(FALLBACK_PER_SUB)]),
-      );
-    }),
-  );
-  const seen = new Set<string>();
-  const items = settled
-    .flatMap((r) => (r.status === "fulfilled" ? r.value : []))
-    .filter((it) => {
-      const post = it.discussionUrl ?? it.url;
-      return post.includes("/comments/") && !seen.has(post) && Boolean(seen.add(post));
-    });
-  if (items.length === 0 && settled.every((r) => r.status === "rejected")) {
-    const reasons = settled.map((r) => String(((r as PromiseRejectedResult).reason as Error)?.message ?? ""));
-    throw new Error(reasons.filter(Boolean).join("; ") || "no posts");
-  }
-  return items;
-}
-
-async function reachPage(step: number, count: number): Promise<Page> {
-  const items = await Promise.all((await viaAgentReach(step, count)).map(withArticleMeta)); // preview images of linked articles
-  return { items, next: `${REACH_CURSOR}${step + count}` };
-}
+const searchPager = new QueryPager<RedditSearchCursor>();
 
 /**
- * Reddit "hot" across news subreddits, paged with Reddit's `after` cursor; through the official API
- * when REDDIT_CLIENT_ID/SECRET are set, else the public JSON. When Reddit blocks the IP,
- * pages come from Agent Reach search instead (cursor "reach:<step>").
+ * Reddit "hot" across every interest's subreddits through the official API (REDDIT_CLIENT_ID/SECRET) or the
+ * public JSON, paged with Reddit's `after`. Reddit blocks many networks (403); then, and after the last `after`
+ * page, posts come from the Arctic Shift archive: each refresh reads the next interests, deeper pages go back in time.
  */
 export async function fetchReddit(cursor: string | null): Promise<Page> {
-  if (cursor?.startsWith(REACH_CURSOR)) return reachPage(Number(cursor.slice(REACH_CURSOR.length)) || 0, 1);
+  if (cursor?.startsWith(ARCTIC_CURSOR)) return arcticStep(cursor);
   const params = new URLSearchParams({ limit: String(PAGE_SIZE), raw_json: "1" });
   if (cursor) params.set("after", cursor);
   try {
@@ -111,24 +72,28 @@ export async function fetchReddit(cursor: string | null): Promise<Page> {
     const listing = hasRedditApi()
       ? await redditApiGet<Listing>(`${path}?${params}`)
       : await fetchJson<Listing>(`https://www.reddit.com${path}.json?${params}`);
-    return { items: parseListing(listing), next: listing.data?.after ?? `${REACH_CURSOR}0` };
+    return { items: parseListing(listing), next: listing.data?.after ?? `${ARCTIC_CURSOR}0` };
   } catch (direct) {
     try {
-      return await reachPage(0, cursor ? 1 : FALLBACK_SUBS);
+      return await arcticRefresh();
     } catch (fallback) {
-      throw new Error(`${(direct as Error).message}; Agent Reach: ${(fallback as Error).message}`);
+      throw new Error(`${(direct as Error).message}; ${(fallback as Error).message}`);
     }
   }
 }
 
+/** Reddit's own search when reachable, else every post of the query's subreddits plus archive title matches. */
 export async function searchReddit(query: string, page: number): Promise<RawItem[]> {
-  if (page > 0) return []; // shortcut: Reddit search paging needs `after` state; first page only
-  const params = new URLSearchParams({ q: query, sort: "relevance", t: "week", limit: String(SEARCH_PAGE_SIZE), raw_json: "1" });
-  try {
-    return parseListing(
-      hasRedditApi() ? await redditApiGet<Listing>(`/search?${params}`) : await fetchJson<Listing>(`https://www.reddit.com/search.json?${params}`),
-    );
-  } catch {
-    return runReach("reddit", ["reddit", "search", query, "--limit", String(SEARCH_PAGE_SIZE)]);
+  if (page === 0) {
+    const params = new URLSearchParams({ q: query, sort: "relevance", t: "all", limit: String(SEARCH_PAGE_SIZE), raw_json: "1" });
+    try {
+      const direct = parseListing(
+        hasRedditApi() ? await redditApiGet<Listing>(`/search?${params}`) : await fetchJson<Listing>(`https://www.reddit.com/search.json?${params}`),
+      );
+      if (direct.length > 0) return [...direct, ...(await searchPager.page(query, 0, (c) => arcticSearchPage(query, c)))];
+    } catch {
+      // blocked network: the archives below cover it
+    }
   }
+  return searchPager.page(query, page, (c) => arcticSearchPage(query, c));
 }

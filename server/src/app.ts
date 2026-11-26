@@ -3,13 +3,13 @@ import express, { type Express, type Request, type RequestHandler } from "expres
 
 import type { Searcher } from "./search.js";
 import type { NewsStore } from "./store.js";
-import { PLATFORMS, type Filter, type Platform, type SourceStatus } from "./types.js";
+import { PLATFORMS, type Filter, type Platform, type Sort, type SourceStatus } from "./types.js";
 
 const HEARTBEAT_MS = 25_000;
-const MAX_OFFSET = 10_000;
+const MAX_OFFSET = 1_000_000;
 const MAX_LIMIT = 60;
 const MAX_QUERY = 120;
-const MAX_SEARCH_PAGE = 20;
+const MAX_SEARCH_PAGE = 10_000;
 const MAX_SEED = 2_147_483_647;
 const SEARCH_RATE = { windowMs: 60_000, max: 30 };
 
@@ -19,6 +19,12 @@ function parseFilter(value: unknown): Filter {
   if (value === undefined || value === "all") return "all";
   if (typeof value === "string" && (PLATFORMS as readonly string[]).includes(value)) return value as Platform;
   throw new BadRequest(`platform must be "all" or one of: ${PLATFORMS.join(", ")}`);
+}
+
+function parseSort(value: unknown): Sort {
+  if (value === undefined || value === "hot") return "hot";
+  if (value === "latest") return "latest";
+  throw new BadRequest('sort must be "hot" or "latest"');
 }
 
 function parseInt(value: unknown, name: string, fallback: number, max: number, min = 0): number {
@@ -93,6 +99,7 @@ export function createApp(store: NewsStore, searcher: Searcher, webOrigin: strin
         parseInt(req.query.offset, "offset", 0, MAX_OFFSET),
         parseInt(req.query.limit, "limit", 30, MAX_LIMIT, 1),
         req.query.seed === undefined ? undefined : parseInt(req.query.seed, "seed", 0, MAX_SEED),
+        parseSort(req.query.sort),
       ),
     ),
   );
@@ -101,7 +108,7 @@ export function createApp(store: NewsStore, searcher: Searcher, webOrigin: strin
     "/api/search",
     rateLimit(SEARCH_RATE),
     wrap((req) =>
-      searcher.search(parseQuery(req.query.q), parseFilter(req.query.platform), parseInt(req.query.page, "page", 0, MAX_SEARCH_PAGE)),
+      searcher.search(parseQuery(req.query.q), parseFilter(req.query.platform), parseInt(req.query.page, "page", 0, MAX_SEARCH_PAGE), parseSort(req.query.sort)),
     ),
   );
 

@@ -39,6 +39,7 @@ export function toRawItem(it: ReachItem & { url: string }, platform: Platform): 
   if (platform === "reddit") {
     const post = redditItemFromText(it.url, it.title ?? "", text);
     if (post) return post;
+    it = { ...it, title: (it.title ?? "").replace(/\s+:\s+r\/\w+$/, "") }; // web-search titles end in " : r/sub"
   }
   const video = videoFor(it.url, findVideoFile(it.raw));
   return {

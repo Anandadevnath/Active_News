@@ -154,14 +154,49 @@ describe("Searcher", () => {
     expect(live).toHaveBeenCalledTimes(1);
   });
 
-  it("drops live results older than two weeks but keeps undated ones", async () => {
+  it("keeps old live results like the platform's own search, ranked below newer ones", async () => {
     const old = { ...item("https://old", 1, "reddit", "storm"), publishedAt: "2020-01-01T00:00:00Z" };
     const undated = item("https://undated", 1, "reddit", "storm");
     const sources = {
       reddit: { intervalMs: 1000, fetch: async () => ({ items: [], next: null }), search: async () => [old, undated] },
     } satisfies Partial<Record<Platform, SourceDef>>;
     const result = await new Searcher(new NewsStore(sources), sources).search("storm", "all", 0);
-    expect(result.items.map((i) => i.url)).toEqual(["https://undated"]);
+    expect(result.items.map((i) => i.url)).toEqual(["https://undated", "https://old"]);
+  });
+
+  it("orders newest first for latest, passes the sort to the platform, and caches each sort separately", async () => {
+    const live = vi.fn(async () => [
+      { ...item("https://old-hot", 90, "reddit", "storm"), publishedAt: "2026-01-01T00:00:00Z" },
+      { ...item("https://new-cold", 1, "reddit", "storm"), publishedAt: "2026-06-01T00:00:00Z" },
+    ]);
+    const sources = {
+      reddit: { intervalMs: 1000, fetch: async () => ({ items: [], next: null }), search: live },
+    } satisfies Partial<Record<Platform, SourceDef>>;
+    const searcher = new Searcher(new NewsStore(sources), sources);
+    const latest = await searcher.search("storm", "all", 0, "latest");
+    expect(latest.items.map((i) => i.url)).toEqual(["https://new-cold", "https://old-hot"]);
+    expect(live).toHaveBeenLastCalledWith("storm", 0, "latest");
+    await searcher.search("storm", "all", 0, "hot");
+    expect(live).toHaveBeenCalledTimes(2);
+  });
+
+  it("ranks hot results by how many keywords they match, then by heat", async () => {
+    const live = async () => [item("https://hot-loose", 90, "reddit", "anime website"), item("https://cold-exact", 1, "reddit", "make an anime website")];
+    const sources = {
+      reddit: { intervalMs: 1000, fetch: async () => ({ items: [], next: null }), search: live },
+    } satisfies Partial<Record<Platform, SourceDef>>;
+    const result = await new Searcher(new NewsStore(sources), sources).search("how to make anime website", "all", 0);
+    expect(result.items.map((i) => i.url)).toEqual(["https://cold-exact", "https://hot-loose"]);
+  });
+
+  it("finds questions in the collected pool by their keywords", async () => {
+    const sources = {
+      hackernews: { intervalMs: 1000, fetch: async () => ({ items: [item("https://pool/rice", 9, "hackernews", "Why are rice prices still high?")], next: null }) },
+    } satisfies Partial<Record<Platform, SourceDef>>;
+    const store = new NewsStore(sources);
+    await store.refresh("hackernews");
+    const result = await new Searcher(store, sources).search("why is rice price rising", "all", 0);
+    expect(result.items.map((i) => i.url)).toEqual(["https://pool/rice"]);
   });
 
   it("reports a failing platform without failing the search", async () => {
@@ -198,6 +233,7 @@ describe("HTTP API", () => {
     expect((await fetch(`${base}/api/feed?platform=myspace`)).status).toBe(400);
     expect((await fetch(`${base}/api/feed?limit=999`)).status).toBe(400);
     expect((await fetch(`${base}/api/search?q=`)).status).toBe(400);
+    expect((await fetch(`${base}/api/search?q=a&sort=bad`)).status).toBe(400);
     expect((await fetch(`${base}/nope`)).status).toBe(404);
   });
 
@@ -227,5 +263,35 @@ describe("HTTP API", () => {
     expect(text).toContain("event: status");
     expect(text).toContain('"added":1');
     await reader.cancel();
+  });
+});
+
+describe("Latest sort", () => {
+  it("orders every platform's stories newest first, undated last", async () => {
+    const at = (url: string, platform: Platform, iso: string | null) => ({ ...item(url, 1, platform), publishedAt: iso });
+    const sources = {
+      hackernews: { intervalMs: 1000, fetch: async () => ({ items: [at("https://h-old", "hackernews", "2026-11-01T00:00:00Z"), at("https://h-none", "hackernews", null)], next: null }) },
+      reddit: { intervalMs: 1000, fetch: async () => ({ items: [at("https://r-new", "reddit", "2026-11-26T00:00:00Z")], next: null }) },
+    } satisfies Partial<Record<Platform, SourceDef>>;
+    const store = new NewsStore(sources);
+    await store.refresh("hackernews");
+    await store.refresh("reddit");
+    const page = await store.feed("all", 0, 10, undefined, "latest");
+    expect(page.items.map((i) => i.url)).toEqual(["https://r-new", "https://h-old", "https://h-none"]);
+  });
+});
+
+describe("Latest sort across platforms", () => {
+  it("takes the newest story of each platform per round so a huge platform cannot bury the rest", async () => {
+    const at = (url: string, platform: Platform, minute: number) => ({ ...item(url, 1, platform), publishedAt: new Date(Date.UTC(2026, 10, 26, 0, minute)).toISOString() });
+    const sources = {
+      "4chan": { intervalMs: 1000, fetch: async () => ({ items: [at("https://c1", "4chan", 59), at("https://c2", "4chan", 58), at("https://c3", "4chan", 57)], next: null }) },
+      reddit: { intervalMs: 1000, fetch: async () => ({ items: [at("https://r1", "reddit", 10)], next: null }) },
+    } satisfies Partial<Record<Platform, SourceDef>>;
+    const store = new NewsStore(sources);
+    await store.refresh("4chan");
+    await store.refresh("reddit");
+    const page = await store.feed("all", 0, 10, undefined, "latest");
+    expect(page.items.map((i) => i.url)).toEqual(["https://c1", "https://r1", "https://c2", "https://c3"]);
   });
 });
