@@ -1,0 +1,9 @@
+/home/raccoon/Downloads/Project/Active_News/DESIGN.md
+/home/raccoon/Downloads/Project/Active_News/README.md
+/home/raccoon/Downloads/Project/Active_News/docs/source-references.md
+/home/raccoon/Downloads/Project/Active_News/render.yaml
+/home/raccoon/Downloads/Project/Active_News/web/AGENTS.md
+/home/raccoon/Downloads/Project/Active_News/web/README.md
+/home/raccoon/Downloads/Project/Active_News/docs/logo.svg
+/home/raccoon/Downloads/Project/Active_News/docs/screenshot.png
+/home/raccoon/Downloads/Project/Active_News/web/app/icon.svg
