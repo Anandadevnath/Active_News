@@ -142,7 +142,10 @@ export async function topicSubreddits(query: string): Promise<NamedSubreddits> {
   const lookups = await Promise.all(joins.map((join) => subredditsByPrefix(join))); // all at once: each answer takes ~1.5s
   for (const [n, join] of joins.entries()) {
     const found = pick(lookups[n]!);
-    if (n === 0 && found.length > 0) return { full: found, partial: [] };
+    // a one-word prefix finds unrelated names ("ado" -> r/AdoptMeRBX, bigger than r/ADO): then only r/<word> itself counts
+    const forms = [join, `${join}s`, `${join}es`]; // "movie" -> r/movies
+    const full = words.length > 1 ? found : pick(lookups[n]!.filter((s) => forms.includes(s.display_name?.toLowerCase() ?? "")));
+    if (n === 0 && full.length > 0) return { full, partial: [] };
     const others = words.filter((w) => !join.includes(w));
     const kept = found.filter((name) => name.toLowerCase() === join || others.some((w) => name.toLowerCase().includes(w)));
     if (n > 0 && kept.length > 0) return { full: [], partial: kept };

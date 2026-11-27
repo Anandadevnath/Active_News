@@ -6,6 +6,7 @@ import { useState } from "react";
 import { isYoutubeId, safeUrl } from "@/lib/format";
 import type { Video } from "@/lib/types";
 
+import { PlayIcon } from "./icons";
 import { FOCUS } from "./platformStyle";
 
 interface VideoPlayerProps {
@@ -15,7 +16,7 @@ interface VideoPlayerProps {
   onPlayingChange: (playing: boolean) => void;
 }
 
-export const MEDIA = "block aspect-video w-full overflow-hidden rounded-2xl bg-white/[0.04] ring-1 ring-white/10";
+export const MEDIA = "block aspect-video w-full overflow-hidden rounded-xl bg-white/[0.04] ring-1 ring-white/10";
 
 export function VideoPlayer({ video, thumbnail, title, onPlayingChange }: VideoPlayerProps) {
   const [open, setOpen] = useState(false);
@@ -56,9 +57,9 @@ export function VideoPlayer({ video, thumbnail, title, onPlayingChange }: VideoP
         )}
         <span
           aria-hidden="true"
-          className="absolute inset-0 m-auto grid h-12 w-16 place-items-center rounded-2xl border border-white/20 bg-white/15 text-xl text-white shadow-lg backdrop-blur-md transition group-hover:bg-youtube/90"
+          className="absolute inset-0 m-auto grid h-12 w-16 place-items-center rounded-xl border border-white/20 bg-white/15 text-white shadow-lg backdrop-blur-md transition group-hover:bg-youtube/90"
         >
-          ▶
+          <PlayIcon className="size-6" />
         </span>
       </button>
     );

@@ -1,9 +1,9 @@
 import { EventEmitter } from "node:events";
 
-import { byHeat, byTime, interleave, shuffleByHeat } from "./feed.js";
+import { byHeat, byTime, interleave, keywords, shuffleByHeat } from "./feed.js";
 import { itemId, rememberEngagement, scoreItems, type Seen } from "./heat.js";
 import type { SourceDef } from "./sources/index.js";
-import type { FeedPage, Filter, NewsItem, Platform, RawItem, Sort, SourceStatus } from "./types.js";
+import type { FeedPage, Filter, NewsItem, Platform, RawItem, Sort, SourceStatus, Suggestion } from "./types.js";
 
 const MAX_POOL = 20_000; // per platform; least recently seen stories are dropped first (deeper ones are re-fetched on demand)
 const PREFETCH = 30; // load deeper pages when a reader gets this close to the end
@@ -11,7 +11,8 @@ const LOAD_MORE_TIMEOUT_MS = 30_000; // when the requested page cannot be filled
 const MIX_WAIT_MS = 1_000; // "all" with a full page: quick platforms still get mixed in; slow ones finish in the background
 const MAX_LOAD_ROUNDS = 3; // deeper pages per platform per feed request
 const SNAPSHOT_MAX = 3_000; // stories per platform kept across restarts (best ranked first)
-const SNAPSHOT_MAX_AGE_MS = 60 * 60_000; // an older snapshot is ignored: wait for the live refresh instead
+const SNAPSHOT_MAX_AGE_MS = 24 * 60 * 60_000; // older stories beat an empty "offline" tab while the live refresh runs; older than a day is ignored
+const EMPTY_RETRY_MS = 30_000; // a platform with nothing to show retries this soon after a failed refresh, not its full interval
 const SNAPSHOT_VERSION = 2; // bump when RawItem changes shape, so old files are ignored (2: News reads outlet feeds, not Google headlines)
 
 /** The pool on disk, so a restart serves stories at once while the live refreshes run. */
@@ -44,6 +45,8 @@ export class NewsStore extends EventEmitter {
   private combined: readonly NewsItem[] | null = null;
   private latest = new Map<Filter, readonly NewsItem[]>(); // newest-first lists, rebuilt after each rescore
   private timers: NodeJS.Timeout[] = [];
+  private retries = new Map<Platform, NodeJS.Timeout>(); // at most one pending empty-platform retry each, so failing intervals do not stack chains
+  private stops: (() => void)[] = []; // live streams
 
   constructor(
     private readonly sources: Partial<Record<Platform, SourceDef>>,
@@ -97,6 +100,24 @@ export class NewsStore extends EventEmitter {
         : sorted(filter);
     this.latest.set(filter, list);
     return list;
+  }
+
+  /** Titles whose words start with every query word ("rus" completes "Rust"), hottest first; instant, pool only. */
+  suggest(query: string, filter: Filter, limit = 8): Suggestion[] {
+    const kws = [...new Set(keywords(query))];
+    if (kws.length === 0) return [];
+    const patterns = kws.map((k) => new RegExp(`(^|[^\\p{L}\\p{N}])${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "iu"));
+    const seen = new Set<string>();
+    const out: Suggestion[] = [];
+    for (const i of this.items(filter, undefined, "hot")) {
+      if (out.length >= limit) break;
+      const title = i.title.trim();
+      const key = title.toLowerCase();
+      if (!title || seen.has(key) || !patterns.every((re) => re.test(title))) continue;
+      seen.add(key);
+      out.push({ title, platform: i.platform });
+    }
+    return out;
   }
 
   snapshot(): Snapshot {
@@ -195,6 +216,14 @@ export class NewsStore extends EventEmitter {
         if (hadItems && added > 0) this.emit("new", { platform, added });
       } catch (err) {
         this.fail(platform, err);
+        // only while running (start() was called), so a stopped store or a test never retries
+        if (this.timers.length > 0 && !this.retries.has(platform) && (this.pools.get(platform)?.size ?? 0) === 0) {
+          const retry = setTimeout(() => {
+            this.retries.delete(platform);
+            void this.refresh(platform);
+          }, EMPTY_RETRY_MS);
+          this.retries.set(platform, retry.unref());
+        }
       }
     });
   }
@@ -265,11 +294,25 @@ export class NewsStore extends EventEmitter {
     for (const platform of this.platforms()) {
       void this.refresh(platform);
       this.timers.push(setInterval(() => void this.refresh(platform), this.sources[platform]!.intervalMs));
+      const live = this.sources[platform]!.live;
+      if (live) this.stops.push(live((items) => this.pushLive(platform, items)));
     }
   }
 
   stop(): void {
     this.timers.forEach(clearInterval);
     this.timers = [];
+    this.retries.forEach(clearTimeout);
+    this.retries.clear();
+    this.stops.forEach((stop) => stop());
+    this.stops = [];
+  }
+
+  /** Stories a live stream just pushed: merged at the top and announced like a refresh's new stories. */
+  private pushLive(platform: Platform, items: RawItem[]): void {
+    const added = this.merge(platform, items, 0, false);
+    if (added === 0) return;
+    this.setStatus(platform, { count: this.pools.get(platform)?.size ?? 0, error: null, updatedAt: new Date(this.now()).toISOString() });
+    this.emit("new", { platform, added });
   }
 }

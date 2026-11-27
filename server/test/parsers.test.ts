@@ -177,6 +177,12 @@ describe("search matching", () => {
     expect(matchesQuery("One  Piece!", "one piece")).toBe(true);
     expect(matchesQuery("one big piece of cake", "one piece")).toBe(false);
     expect(matchesQuery("one of the best pieces of tech", "one piece")).toBe(false);
+    expect(matchesQuery("【Ado】シンカ (Shinka) MV", "【Ado】シンカ")).toBe(true); // words split by punctuation, not spaces
+    expect(matchesQuery("Ado - シンカ (bass backing track)", "ado シンカ")).toBe(true);
+    expect(matchesQuery("Ladybird adopts Rust", "ado")).toBe(false);
+    expect(matchesQuery("Without further ado, the Ado concert", "ado")).toBe(true);
+    expect(matchesQuery("one 日本語のテキスト piece", "one piece")).toBe(false); // letters of any script are not a separator
+    expect(matchesQuery("I picked the last one. Piece by piece", "one piece")).toBe(false); // nor a sentence break
   });
 
   it("matches every keyword of a question in any order, then drops keywords from the end when nothing does", async () => {
@@ -197,6 +203,14 @@ describe("search matching", () => {
     expect(titles.map((t) => relevance(t, query))).toEqual([2, 2, 2]);
     expect(relevance("How I made my anime website", query)).toBe(2); // "made" is not "make"
     expect(relevance("Make an anime website with React", query)).toBe(3);
+  });
+
+  it("tells a name ('Ado') from the same word in lower case ('without further ado')", async () => {
+    const { namedMatch } = await import("../src/feed.js");
+    expect(namedMatch("Ado tops the chart", "ado")).toBe(1);
+    expect(namedMatch("ADO brings LIDAR to e-bikes", "ado")).toBe(1);
+    expect(namedMatch("Without further ado...", "ado")).toBe(0);
+    expect(namedMatch("Adopt Me! Roblox update", "ado")).toBe(0);
   });
 });
 

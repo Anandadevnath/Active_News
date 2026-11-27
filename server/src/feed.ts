@@ -67,6 +67,12 @@ export function dropOrder(kws: readonly string[]): string[] {
 
 const escapeRegExp = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+/** Accents off, so "pokemon" finds "Pokémon". */
+export const foldAccents = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "");
+
+/** The keyword as a whole word, or its plural ("llm" finds "LLMs"), never the start of a longer word ("ado" not "adopts"). */
+export const wordPattern = (k: string, flags: string) => new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(k)}(?:s|es|'s)?(?![\\p{L}\\p{N}])`, flags);
+
 /** Every keyword starts a word somewhere in the text, in any order ("price" also matches "prices"). */
 function hasWordStarts(text: string, kws: readonly string[]): boolean {
   return kws.every((k) => new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRegExp(k)}`, "iu").test(text));
@@ -81,6 +87,16 @@ export function matchesQuery(text: string, query: string): boolean {
 /** How many of the query's keywords start a word in the text: ranks search results, best match first. */
 export function relevance(text: string, query: string): number {
   return keywords(query).filter((k) => hasWordStarts(text, [k])).length;
+}
+
+/**
+ * 1 when a keyword appears capitalized ("Ado", "ADO"), as a name does; 0 when it only appears lower-case, as a common
+ * word does ("without further ado"). Breaks ties between equally relevant search results.
+ */
+export function namedMatch(text: string, query: string): number {
+  const capitalized = (k: string) =>
+    [...text.matchAll(wordPattern(k, "giu"))].some(([m]) => m[0] !== m[0]!.toLowerCase()); // "Ado" yes, "Adopt" no
+  return keywords(query).some(capitalized) ? 1 : 0;
 }
 
 /**
@@ -104,8 +120,11 @@ export function dedupe(items: readonly NewsItem[]): NewsItem[] {
   return items.filter((i) => (seen.has(i.id) ? false : (seen.add(i.id), true)));
 }
 
-/** The phrase appears as whole words, any spacing ("one piece" matches "One  Piece!" but not "one of the best pieces"). */
+/**
+ * The phrase appears as whole words, separated by spaces or punctuation ("one piece" matches "One  Piece!" and
+ * "【Ado】シンカ" matches "ado シンカ", but "one of the best pieces" and "one big piece" do not match "one piece").
+ */
 export function containsPhrase(text: string, phrase: string): boolean {
   const words = phrase.trim().split(/\s+/).filter(Boolean).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  return words.length > 0 && new RegExp(`(^|\\W)${words.join("\\s+")}(\\W|$)`, "i").test(text);
+  return words.length > 0 && new RegExp(`(^|\\W)${words.join("[^\\p{L}\\p{N}.!?]+")}(\\W|$)`, "iu").test(text);
 }

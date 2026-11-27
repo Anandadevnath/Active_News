@@ -1,39 +1,34 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getFeed, newSeed, searchNews } from "@/lib/api";
+import { safeUrl } from "@/lib/format";
 import { loadSeen, recordSeen } from "@/lib/seen";
 import { PLATFORM_LABEL, type Filter, type NewsItem, type Platform, type SearchPage, type Sort } from "@/lib/types";
 
 import { NewsCard } from "./NewsCard";
+import { RisingShelf } from "./RisingShelf";
 
 const PAGE_SIZE = 30;
-const GRID = "grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] items-stretch gap-x-6 gap-y-10";
+const GRID = "grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] items-stretch gap-x-4 gap-y-10";
 const BAR = "rounded-full bg-white/[0.07]";
+const SHELF_MIN = 4; // fewer rising stories with pictures than this: no shelf
+const SHELF_MAX = 12;
 
 /** Placeholder with the same slots and sizes as NewsCard, so nothing jumps when stories arrive. */
 function SkeletonCard() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-3 border-t-2 border-white/10 pt-3 motion-safe:animate-pulse">
-      <div className="flex h-[16.5px] items-center gap-2">
-        <div className={`h-2.5 w-20 ${BAR}`} />
-        <div className={`ml-auto h-1 w-14 ${BAR}`} />
-      </div>
-      <div className="aspect-video w-full rounded-2xl bg-white/[0.05] ring-1 ring-white/10" />
-      <div className="flex min-h-[71.25px] flex-col justify-center gap-2.5">
-        <div className={`h-4 w-full ${BAR}`} />
-        <div className={`h-4 w-11/12 ${BAR}`} />
-        <div className={`h-4 w-2/3 ${BAR}`} />
-      </div>
-      <div className="flex min-h-[45.5px] flex-col justify-center gap-2">
-        <div className={`h-3 w-full ${BAR}`} />
-        <div className={`h-3 w-4/5 ${BAR}`} />
-      </div>
-      <div className="mt-auto box-content flex h-4 items-center gap-3 border-t border-dashed border-white/10 pt-2">
-        <div className={`h-2.5 w-20 ${BAR}`} />
-        <div className={`h-2.5 w-10 ${BAR}`} />
-        <div className={`h-2.5 w-16 ${BAR}`} />
+    <div aria-hidden="true" className="flex flex-col gap-3 motion-safe:animate-pulse">
+      <div className="aspect-video w-full rounded-xl bg-white/[0.05] ring-1 ring-white/10" />
+      <div className="flex gap-3">
+        <div className="mt-0.5 size-9 shrink-0 rounded-full bg-white/[0.07]" />
+        <div className="flex min-h-27 flex-1 flex-col gap-2.5 pt-1">
+          <div className={`h-4 w-full ${BAR}`} />
+          <div className={`h-4 w-3/4 ${BAR}`} />
+          <div className={`mt-1 h-3 w-1/2 ${BAR}`} />
+          <div className={`h-3 w-2/3 ${BAR}`} />
+        </div>
       </div>
     </div>
   );
@@ -46,6 +41,7 @@ interface FeedListProps {
   filter: Filter;
   sort: Sort;
   query: string; // empty = live feed, otherwise search
+  heading: string;
   includeSeen: boolean;
   now: number | null;
   onPlayingChange: (id: string, playing: boolean) => void;
@@ -57,13 +53,15 @@ interface FeedListProps {
  * seen (snapshot taken on mount, so a reload starts with fresh stories). Search mode pages /api/search.
  * Remount (change `key`) to start over.
  */
-export function FeedList({ filter, sort, query, includeSeen, now, onPlayingChange, onShowSeen }: FeedListProps) {
+export function FeedList({ filter, sort, query, heading, includeSeen, now, onPlayingChange, onShowSeen }: FeedListProps) {
   const [items, setItems] = useState<NewsItem[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hiddenCount, setHiddenCount] = useState(0);
   const [searchErrors, setSearchErrors] = useState<SearchPage["errors"]>([]);
   const [pending, setPending] = useState<Platform[]>([]); // platforms still searching while a quick first page shows
+  const [shelf, setShelf] = useState<NewsItem[]>([]); // rising stories picked once from the first page
+  const [cols, setCols] = useState(1); // grid columns right now: the shelf goes after the first row
 
   const cursor = useRef(0); // feed: server offset; search: page index
   const seed = useRef<number | null>(null); // one order per visit; set on first load
@@ -73,6 +71,8 @@ export function FeedList({ filter, sort, query, includeSeen, now, onPlayingChang
   const pendingSeen = useRef(new Set<string>());
   const sentinel = useRef<HTMLDivElement | null>(null);
   const cardObserver = useRef<IntersectionObserver | null>(null);
+  const gridObserver = useRef<ResizeObserver | null>(null);
+  const shelfDecided = useRef(false);
   const isSearch = query.length > 0;
 
   /** First search page: show what the quick platforms found right away, then swap in the full page. */
@@ -106,6 +106,11 @@ export function FeedList({ filter, sort, query, includeSeen, now, onPlayingChang
         const visible = unique.filter((i) => !hidden.current!.has(i.id));
         setHiddenCount((n) => n + unique.length - visible.length);
         setItems((prev) => [...prev, ...visible]);
+        if (!shelfDecided.current && visible.length > 0) {
+          shelfDecided.current = true; // decided once, so the shelf never pops in above where the reader is
+          const rising = visible.filter((i) => i.rising && safeUrl(i.thumbnail));
+          if (rising.length >= SHELF_MIN) setShelf(rising.slice(0, SHELF_MAX));
+        }
         setHasMore(page.hasMore && page.items.length > 0);
         setError(null);
         if (visible.length > 0 || !page.hasMore || page.items.length === 0) break;
@@ -174,13 +179,25 @@ export function FeedList({ filter, sort, query, includeSeen, now, onPlayingChang
     [isSearch],
   );
 
+  // Count the grid's columns as it resizes, so the shelf sits after the first row in reading order too.
+  const gridRef = useCallback((el: HTMLDivElement | null) => {
+    gridObserver.current?.disconnect();
+    if (!el) return;
+    gridObserver.current = new ResizeObserver(() => setCols(getComputedStyle(el).gridTemplateColumns.split(" ").length));
+    gridObserver.current.observe(el);
+  }, []);
+
+  const shelfIds = useMemo(() => new Set(shelf.map((i) => i.id)), [shelf]);
+  const gridItems = shelf.length > 0 ? items.filter((i) => !shelfIds.has(i.id)) : items;
+  const shelfAfter = Math.min(cols, gridItems.length) - 1;
+
   const initialLoading = items.length === 0 && hasMore && !error;
   const caughtUp = !hasMore && !isSearch && hiddenCount > 0;
 
   return (
     <>
       {isSearch && searchErrors.length > 0 && (
-        <details className="mb-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-300 backdrop-blur-xl">
+        <details className="mb-6 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-300">
           <summary>Not searched: {searchErrors.map((e) => PLATFORM_LABEL[e.platform]).join(", ")}</summary>
           <ul>
             {searchErrors.map((e) => (
@@ -202,15 +219,18 @@ export function FeedList({ filter, sort, query, includeSeen, now, onPlayingChang
 
       {items.length > 0 && (
         <>
-          <h2 className="mb-4 flex items-center gap-3 text-xs font-bold tracking-[0.14em] text-zinc-400 uppercase after:h-px after:flex-1 after:bg-white/10">{isSearch ? `${sort === "latest" ? "Newest results" : "Results"} for “${query}”` : sort === "latest" ? "Newest first" : "Being discussed"}</h2>
+          <h2 className={isSearch ? "mb-4 text-[15px] font-medium text-zinc-300" : "sr-only"}>{heading}</h2>
           {pending.length > 0 && (
             <p className="-mt-2 mb-4 text-xs text-zinc-500 motion-safe:animate-pulse" aria-live="polite">
               Still searching {pending.map((p) => PLATFORM_LABEL[p]).join(", ")}…
             </p>
           )}
-          <div className={GRID}>
-            {items.map((item) => (
-              <NewsCard key={item.id} item={item} now={now} fresh={false} cardRef={observeCard} onPlayingChange={onPlayingChange} />
+          <div ref={gridRef} className={GRID}>
+            {gridItems.map((item, i) => (
+              <Fragment key={item.id}>
+                <NewsCard item={item} now={now} fresh={false} cardRef={observeCard} onPlayingChange={onPlayingChange} />
+                {i === shelfAfter && shelf.length > 0 && <RisingShelf items={shelf} now={now} />}
+              </Fragment>
             ))}
           </div>
         </>

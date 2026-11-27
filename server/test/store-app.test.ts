@@ -137,11 +137,66 @@ describe("NewsStore pool", () => {
     expect(after.items("hackernews")).toHaveLength(3);
     expect(after.statuses().find((s) => s.platform === "hackernews")?.count).toBe(3);
     expect(sources.hackernews.calls).toEqual([null]); // served from the snapshot, not fetched again
-    const stale = new NewsStore(sources, () => t + 2 * 60 * 60_000);
+    const stale = new NewsStore(sources, () => t + 25 * 60 * 60_000);
     stale.restore(snap);
     stale.restore({ ...snap, at: t, version: 0 });
     stale.restore(null);
     expect(stale.items()).toHaveLength(0);
+  });
+
+  it("retries an empty platform after 30 s when its refresh fails, instead of waiting its full interval", async () => {
+    vi.useFakeTimers();
+    try {
+      let calls = 0;
+      const flaky: SourceDef = { intervalMs: 60 * 60_000, fetch: async () => (calls += 1) === 1 ? Promise.reject(new Error("down")) : { items: [item("https://hn/1")], next: null } };
+      const store = new NewsStore({ hackernews: flaky });
+      store.start();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(store.statuses().find((s) => s.platform === "hackernews")?.error).toBe("down");
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(calls).toBe(2);
+      expect(store.statuses().find((s) => s.platform === "hackernews")).toMatchObject({ error: null, count: 1 });
+      store.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps one retry chain per failing empty platform and clears it on stop", async () => {
+    vi.useFakeTimers();
+    try {
+      let calls = 0;
+      const down: SourceDef = { intervalMs: 5 * 60_000, fetch: async () => ((calls += 1), Promise.reject(new Error("down"))) };
+      const store = new NewsStore({ hackernews: down });
+      store.start();
+      await vi.advanceTimersByTimeAsync(60 * 60_000);
+      const firstHour = calls;
+      expect(firstHour).toBeLessThanOrEqual(1 + 120 + 12); // initial + 30 s retries + 5 min intervals
+      await vi.advanceTimersByTimeAsync(60 * 60_000);
+      expect(calls - firstHour).toBeLessThanOrEqual(120 + 12); // not growing hour over hour
+      store.stop();
+      const stopped = calls;
+      await vi.advanceTimersByTimeAsync(60 * 60_000);
+      expect(calls).toBe(stopped);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("adds a live stream's stories at once, announces them, and closes the stream on stop", async () => {
+    let push: (items: RawItem[]) => void = () => {};
+    const stopLive = vi.fn();
+    const source: SourceDef = { ...pagedSource(1, 5), live: (p) => ((push = p), stopLive) };
+    const store = new NewsStore({ hackernews: source });
+    const added: number[] = [];
+    store.on("new", (e: { added: number }) => added.push(e.added));
+    store.start();
+    await vi.waitFor(() => expect(store.statuses()[0]!.count).toBe(5));
+    push([item("https://hn/live", 1)]);
+    expect(store.statuses()[0]!.count).toBe(6);
+    expect(added).toEqual([1]);
+    store.stop();
+    expect(stopLive).toHaveBeenCalled();
   });
 
   it("runs one fetch per platform at a time", async () => {
@@ -304,6 +359,16 @@ describe("HTTP API", () => {
     expect((await fetch(`${base}/api/search?q=`)).status).toBe(400);
     expect((await fetch(`${base}/api/search?q=a&sort=bad`)).status).toBe(400);
     expect((await fetch(`${base}/nope`)).status).toBe(404);
+  });
+
+  it("suggests collected titles that match the typed words", async () => {
+    const sources = { hackernews: { intervalMs: 1000, fetch: async () => ({ items: [item("https://a", 1, "hackernews", "One Piece season 2 trailer"), item("https://b", 1, "hackernews", "Rust 2.0")], next: null }) } };
+    const store = new NewsStore(sources);
+    await store.refresh("hackernews");
+    const base = await start(store, sources);
+    const body = await (await fetch(`${base}/api/suggest?q=one%20pie`)).json();
+    expect(body).toEqual({ suggestions: [{ title: "One Piece season 2 trailer", platform: "hackernews" }] });
+    expect((await fetch(`${base}/api/suggest?q=`)).status).toBe(400);
   });
 
   it("rate limits search", async () => {

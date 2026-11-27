@@ -26,11 +26,11 @@ describe("Bluesky", () => {
     expect(parseBskyPost(post("p1", "One Piece chapter is out", { embed: { $type: "app.bsky.embed.images#view", images: [{ thumb: "https://cdn.bsky.app/img/t.jpg" }] } }))).toEqual({
       platform: "bluesky",
       title: "One Piece chapter is out",
-      url: "https://bsky.app/profile/alice.bsky.social/post/p1",
+      url: "https://bsky.app/profile/did:plc:abc/post/p1",
       author: "Alice",
       description: "",
       publishedAt: "2026-11-26T10:00:00.000Z",
-      discussionUrl: "https://bsky.app/profile/alice.bsky.social/post/p1",
+      discussionUrl: "https://bsky.app/profile/did:plc:abc/post/p1",
       video: null,
       thumbnail: "https://cdn.bsky.app/img/t.jpg",
       metrics: { score: 12, comments: 3 },
@@ -42,7 +42,7 @@ describe("Bluesky", () => {
       post("p2", "watch this", { embed: { $type: "app.bsky.embed.external#view", external: { uri: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", title: "A video", thumb: "https://cdn.bsky.app/img/y.jpg" } } }),
     )!;
     expect(item.url).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-    expect(item.discussionUrl).toBe("https://bsky.app/profile/alice.bsky.social/post/p2");
+    expect(item.discussionUrl).toBe("https://bsky.app/profile/did:plc:abc/post/p2");
     expect(item.video).toEqual({ kind: "youtube", id: "dQw4w9WgXcQ" });
     expect(item.description).toBe("A video");
   });
@@ -50,7 +50,7 @@ describe("Bluesky", () => {
   it("keeps two posts sharing one GIF apart: the GIF is their picture, the post their link", () => {
     const gif = (rkey: string) =>
       parseBskyPost(post(rkey, "lol", { embed: { $type: "app.bsky.embed.external#view", external: { uri: "https://static.klipy.com/ii/x.gif", title: "Funny", thumb: "https://cdn.bsky.app/img/g.jpg" } } }))!;
-    expect(gif("g1").url).toBe("https://bsky.app/profile/alice.bsky.social/post/g1");
+    expect(gif("g1").url).toBe("https://bsky.app/profile/did:plc:abc/post/g1");
     expect(gif("g2").url).not.toBe(gif("g1").url);
     expect(gif("g1").thumbnail).toBe("https://cdn.bsky.app/img/g.jpg");
     expect(gif("g1").description).toBe("");
@@ -61,6 +61,22 @@ describe("Bluesky", () => {
     const item = parseBskyPost(post("p7", long))!;
     expect(item.title.length).toBeLessThanOrEqual(140);
     expect(item.description.length).toBeGreaterThan(item.title.length);
+  });
+
+  it("drops posts quoting adult posts or from authors hidden from logged-out readers, and links by DID", () => {
+    expect(parseBskyPost(post("q1", "x", { embed: { $type: "app.bsky.embed.record#view", record: { labels: [{ val: "porn" }] } } }))).toBeNull();
+    expect(parseBskyPost(post("q2", "x", { author: { handle: "a.b", labels: [{ val: "!no-unauthenticated" }] } }))).toBeNull();
+    expect(parseBskyPost(post("q3", "x", { labels: [{ val: "sexual-figurative" }] }))).toBeNull();
+    const item = parseBskyPost(post("q4", "hi", { author: { handle: "handle.invalid", labels: [] } }))!;
+    expect(item.discussionUrl).toBe("https://bsky.app/profile/did:plc:abc/post/q4");
+    expect(item.author).toBe("");
+  });
+
+  it("reads one page of top posts for hot search, since paging by date would skip most of them", async () => {
+    fetchJson.mockResolvedValue({ posts: [post("t1", "one piece art")] });
+    expect(await searchBluesky("one piece", 0, "hot")).toHaveLength(1);
+    expect(await searchBluesky("one piece", 1, "hot")).toEqual([]);
+    expect(fetchJson).toHaveBeenCalledTimes(1);
   });
 
   it("drops adult-labelled posts and posts with nothing to show, and never trusts a future date", () => {

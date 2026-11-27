@@ -1,6 +1,6 @@
 // Keep in sync with web/lib/types.ts (the browser-side copy).
 
-export const PLATFORMS = ["youtube", "reddit", "hackernews", "4chan", "twitter", "bluesky", "quora", "news"] as const;
+export const PLATFORMS = ["youtube", "reddit", "hackernews", "4chan", "twitter", "bluesky", "mastodon", "lemmy", "quora", "news"] as const;
 export type Platform = (typeof PLATFORMS)[number];
 
 export type Video = { kind: "youtube"; id: string } | { kind: "file"; url: string };
@@ -59,6 +59,16 @@ export interface SearchPage {
   errors: { platform: Platform; error: string }[];
   partial?: boolean; // a quick first look while `pending` platforms are still searching; ask again for the full page
   pending?: Platform[];
+}
+
+/** Titles from the collected pool that continue what is being typed, hottest first. */
+export interface Suggestion {
+  title: string;
+  platform: Platform;
+}
+
+export interface SuggestPage {
+  suggestions: Suggestion[];
 }
 
 export type Filter = Platform | "all";

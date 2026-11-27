@@ -1,6 +1,6 @@
 // Browser-side copy of server/src/types.ts. Keep the two in sync.
 
-export const PLATFORMS = ["youtube", "reddit", "hackernews", "4chan", "twitter", "bluesky", "quora", "news"] as const;
+export const PLATFORMS = ["youtube", "reddit", "hackernews", "4chan", "twitter", "bluesky", "mastodon", "lemmy", "quora", "news"] as const;
 export type Platform = (typeof PLATFORMS)[number];
 export type Filter = Platform | "all";
 
@@ -55,6 +55,16 @@ export interface SearchPage {
   pending?: Platform[];
 }
 
+/** Titles from the collected pool that continue what is being typed, hottest first. */
+export interface Suggestion {
+  title: string;
+  platform: Platform;
+}
+
+export interface SuggestPage {
+  suggestions: Suggestion[];
+}
+
 export const PLATFORM_LABEL: Record<Platform, string> = {
   youtube: "YouTube",
   reddit: "Reddit",
@@ -62,9 +72,33 @@ export const PLATFORM_LABEL: Record<Platform, string> = {
   "4chan": "4chan",
   twitter: "X / Twitter",
   bluesky: "Bluesky",
+  mastodon: "Mastodon",
+  lemmy: "Lemmy",
   quora: "Quora",
   news: "News sites",
 };
+
+/** Topic chips above the feed: each searches every platform for its query (labels match the server's interests). */
+export const TOPICS: readonly { label: string; query: string }[] = [
+  { label: "News", query: "news" },
+  { label: "Tech", query: "technology" },
+  { label: "AI", query: "AI" },
+  { label: "Gaming", query: "gaming" },
+  { label: "Music", query: "music" },
+  { label: "Movies & TV", query: "movies" },
+  { label: "Anime", query: "anime" },
+  { label: "Sports", query: "sports" },
+  { label: "Science & space", query: "science" },
+  { label: "Money", query: "business" },
+  { label: "Food", query: "food" },
+  { label: "Health & fitness", query: "fitness" },
+  { label: "Travel", query: "travel" },
+  { label: "Cars", query: "cars" },
+  { label: "Fun", query: "funny" },
+  { label: "Learn", query: "explained" },
+  { label: "Art & DIY", query: "art" },
+  { label: "Books", query: "books" },
+];
 
 /** What the user can do when a platform fails, matched against the server's error text. */
 export function fixHint(error: string): string | null {

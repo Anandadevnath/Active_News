@@ -151,10 +151,13 @@ const nextRefresh = rotation(STREAMS.length, REFRESH_STREAMS);
 
 async function streamPage(stream: (typeof STREAMS)[number], depth: number): Promise<RawItem[]> {
   try {
-    return await feedPager.page(stream.key, depth, (c) => searchPage(stream.query, stream.filters, c));
+    const items = await feedPager.page(stream.key, depth, (c) => searchPage(stream.query, stream.filters, c));
+    if (items.length > 0 || depth > 0) return items;
+    client = null; // an empty first page means a stale session (seen after the machine slept): start a new one
   } catch {
-    return ytDlpSearch(stream.query, depth, "hot");
+    // fall through to yt-dlp
   }
+  return ytDlpSearch(stream.query, depth, "hot");
 }
 
 /**

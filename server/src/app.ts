@@ -12,6 +12,7 @@ const MAX_QUERY = 120;
 const MAX_SEARCH_PAGE = 10_000;
 const MAX_SEED = 2_147_483_647;
 const SEARCH_RATE = { windowMs: 60_000, max: 30 };
+const SUGGEST_RATE = { windowMs: 60_000, max: 120 }; // suggestions never touch the platforms, only the in-memory pool
 
 class BadRequest extends Error {}
 
@@ -116,6 +117,12 @@ export function createApp(store: NewsStore, searcher: Searcher, webOrigin: strin
         req.query.fast === "1", // answer within ~1.5s with what has arrived; the client asks again for the full page
       ),
     ),
+  );
+
+  app.get(
+    "/api/suggest",
+    rateLimit(SUGGEST_RATE),
+    wrap((req) => ({ suggestions: store.suggest(parseQuery(req.query.q), parseFilter(req.query.platform)) })),
   );
 
   /** Server-Sent Events: "status" for platform state, "new" when a refresh finds new stories. */

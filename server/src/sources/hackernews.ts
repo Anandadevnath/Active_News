@@ -1,4 +1,4 @@
-import { dropOrder, filterByQuery, keywords } from "../feed.js";
+import { containsPhrase, dropOrder, filterByQuery, foldAccents, keywords, wordPattern } from "../feed.js";
 import { clip, epochIso, stripHtml, videoFor, youtubeThumb } from "../media.js";
 import type { Page, RawItem, Sort } from "../types.js";
 import { withArticleMeta } from "./article.js";
@@ -132,8 +132,8 @@ const searchPager = new QueryPager<HnCursor>();
 /**
  * Every story whose title matches, then older and older date windows; no cap. Hot: most relevant first;
  * latest: newest first. Questions search their keywords, generic words last. With 3+ keywords, when no title
- * has all of them Algolia drops words from the end ("make anime website" -> "anime website"); the hits are then
- * re-checked so a query never shrinks to one loose word ("beat").
+ * has all of them Algolia drops words from the end ("make anime website" -> "anime website"). Every hit is re-checked:
+ * Algolia prefix-matches ("ado" finds "adopts"), and a query must never shrink to one loose word ("beat").
  */
 export async function searchHackerNews(query: string, page: number, sort: Sort = "hot"): Promise<RawItem[]> {
   const kws = keywords(query);
@@ -145,5 +145,80 @@ export async function searchHackerNews(query: string, page: number, sort: Sort =
   };
   const endpoint = sort === "latest" ? "search_by_date" : "search";
   const items = await searchPager.page(`${sort}\u0000${query}`, page, (c) => algoliaPage(endpoint, params, c ?? { page: 0, before: null }));
-  return kws.length >= 3 ? filterByQuery(items, (i) => i.title, query) : items;
+  if (kws.length >= 3) return filterByQuery(items, (i) => i.title, query);
+  // Algolia also prefix-matches ("ado" finds "adopts"): keep whole words, plurals ("LLMs") and accented forms ("Pokémon")
+  const patterns = kws.map((k) => wordPattern(foldAccents(k), "iu"));
+  return items.filter((i) => containsPhrase(i.title, kws.join(" ")) || patterns.every((re) => re.test(foldAccents(i.title))));
+}
+
+// ---- live stream ----
+
+const LIVE_RECONNECT_MS = 10_000;
+const LIVE_MAX_NEW = 30; // per change; more than this at once only happens after a long disconnect
+const LIVE_IDLE_MS = 75_000; // Firebase sends keep-alive every ~30 s, so silence this long means a dead connection
+
+/** Ids in the newest-first list that were not there before. */
+export function freshIds(known: ReadonlySet<number>, next: readonly number[]): number[] {
+  return next.filter((id) => !known.has(id)).slice(0, LIVE_MAX_NEW);
+}
+
+/** The `event:` names of a server-sent event stream, as they arrive. */
+async function* sseEvents(body: ReadableStream<Uint8Array>, onChunk: () => void): AsyncGenerator<string> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return;
+    onChunk();
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) if (line.startsWith("event:")) yield line.slice(6).trim();
+  }
+}
+
+/**
+ * Hacker News' official live stream (Firebase server-sent events on the newest-stories list): every change pushes
+ * the new stories at once, so they show within seconds instead of on the next refresh (which reads the top
+ * stories, where a new one is rarely listed). Reconnects when the stream drops. Returns a stop function.
+ */
+export function watchHackerNews(push: (items: RawItem[]) => void): () => void {
+  const controller = new AbortController();
+  let known: Set<number> | null = null; // null until the first list: the refresh already shows those
+  const onChange = async () => {
+    const ids = await fetchJson<number[]>(`${API}/newstories.json`);
+    const fresh = known ? freshIds(known, ids) : [];
+    const raws = await Promise.all(fresh.map((id) => fetchJson<HnItem | null>(`${API}/item/${id}.json`).catch(() => null)));
+    // items that failed or are not readable yet stay unknown, so the next change retries them
+    const missing = new Set(fresh.filter((_, i) => raws[i] === null));
+    known = new Set(ids.filter((id) => !missing.has(id)));
+    if (fresh.length === 0) return;
+    push(await Promise.all(raws.map(parseHnItem).filter((i): i is RawItem => i !== null).map(withArticleMeta)));
+  };
+  void (async () => {
+    while (!controller.signal.aborted) {
+      // watchdog: a silently dead connection (sleep, network switch) is aborted instead of waiting out undici's 300 s timeout
+      const idle = new AbortController();
+      let timer: NodeJS.Timeout | undefined;
+      const arm = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => idle.abort(), LIVE_IDLE_MS).unref();
+      };
+      try {
+        arm();
+        const resp = await fetch(`${API}/newstories.json`, { headers: { Accept: "text/event-stream" }, signal: AbortSignal.any([controller.signal, idle.signal]) });
+        if (!resp.ok || !resp.body) throw new Error(`HTTP ${resp.status} from Hacker News live stream`);
+        for await (const event of sseEvents(resp.body, arm)) {
+          if (event === "put" || event === "patch") await onChange().catch((err) => console.error(`[hackernews live] ${err instanceof Error ? err.message : err}`));
+        }
+      } catch {
+        // dropped, refused or idle: reconnect below
+      } finally {
+        clearTimeout(timer);
+      }
+      if (!controller.signal.aborted) await new Promise((r) => setTimeout(r, LIVE_RECONNECT_MS).unref());
+    }
+  })();
+  return () => controller.abort();
 }

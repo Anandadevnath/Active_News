@@ -107,6 +107,31 @@ describe("Arctic Shift search", () => {
   });
 });
 
+describe("Reddit one-word search", () => {
+  it("takes only r/<word> whole, not bigger subreddits that merely start with it", async () => {
+    fetchJson.mockImplementation(async (url: string) => {
+      if (url.includes("subreddits/search")) {
+        return { data: [{ display_name: "AdoptMeRBX", subscribers: 900_000 }, { display_name: "Adobe", subscribers: 800_000 }, { display_name: "AdorableArt", subscribers: 700_000 }, { display_name: "ADO", subscribers: 93_000 }] };
+      }
+      if (url.includes("pullpush")) return { data: [] };
+      return { data: [post("a1", 90, { title: "Ado announces a new single" })] };
+    });
+    await arcticSearchPage("ado", undefined);
+    const subsQueried = fetchJson.mock.calls.map(([u]) => new URL(u as string).searchParams.get("subreddit")).filter(Boolean);
+    expect(subsQueried).toEqual(["ADO"]);
+  });
+
+  it("accepts the plural name: 'movie' reads r/movies", async () => {
+    fetchJson.mockImplementation(async (url: string) => {
+      if (url.includes("subreddits/search")) return { data: [{ display_name: "movies", subscribers: 37_000_000 }, { display_name: "MovieSuggestions", subscribers: 2_000_000 }] };
+      if (url.includes("pullpush")) return { data: [] };
+      return { data: [post("m1", 90, { title: "Best movie of the year" })] };
+    });
+    await arcticSearchPage("movie", undefined);
+    expect(fetchJson.mock.calls.map(([u]) => new URL(u as string).searchParams.get("subreddit")).filter(Boolean)).toEqual(["movies"]);
+  });
+});
+
 describe("QueryPager", () => {
   it("continues page N from page N-1's cursor and returns nothing past the end", async () => {
     const pager = new QueryPager<number>();

@@ -1,4 +1,4 @@
-import { byHeat, dedupe, filterByQuery, relevance } from "./feed.js";
+import { byHeat, dedupe, filterByQuery, namedMatch, relevance } from "./feed.js";
 import { scoreItems } from "./heat.js";
 import { LatestMerge, type StreamKey, type StreamRead } from "./latest.js";
 import type { SourceDef } from "./sources/index.js";
@@ -99,7 +99,8 @@ export class Searcher {
       const liveItems = arrived.flatMap((r) => r.items);
       const items = dedupe([...poolSlice, ...liveItems]);
       // titles only: long 4chan threads and posts contain a query's words scattered through unrelated text
-      const score = new Map(items.map((i) => [i.id, relevance(i.title, query)]));
+      // ties: the query as a name ("Ado") before the same word in lower case ("without further ado")
+      const score = new Map(items.map((i) => [i.id, relevance(i.title, query) * 2 + namedMatch(i.title, query)]));
       return {
         items: items.sort((a, b) => score.get(b.id)! - score.get(a.id)! || byHeat(a, b)),
         hasMore: pool.length > (page + 1) * POOL_PAGE || liveItems.length > 0,

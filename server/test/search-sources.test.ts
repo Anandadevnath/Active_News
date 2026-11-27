@@ -38,6 +38,15 @@ describe("Hacker News search", () => {
     fetchJson.mockResolvedValue({ hits: [hit("1", "Why are rice prices still high?"), hit("2", "Rising stars of 2026")], nbPages: 1 });
     expect((await searchHackerNews("rice price rising stars", 0)).map((i) => i.title)).toEqual(["Why are rice prices still high?"]);
   });
+
+  it("drops Algolia's prefix matches for a one-word query", async () => {
+    const hit = (id: string, title: string) => ({ objectID: id, title, created_at_i: 1 });
+    fetchJson.mockResolvedValue({ hits: [hit("1", "Ladybird adopts Rust"), hit("2", "Ado tops the Oricon chart")], nbPages: 1 });
+    expect((await searchHackerNews("ado", 0)).map((i) => i.title)).toEqual(["Ado tops the Oricon chart"]);
+    fetchJson.mockResolvedValue({ hits: [hit("3", "LLMs are not enough"), hit("4", "Pokémon Go update")], nbPages: 1 });
+    expect((await searchHackerNews("llm", 1)).map((i) => i.title)).toEqual(["LLMs are not enough"]);
+    expect((await searchHackerNews("pokemon", 0)).map((i) => i.title)).toEqual(["Pokémon Go update"]);
+  });
 });
 
 describe("News sites (Google News RSS)", () => {
