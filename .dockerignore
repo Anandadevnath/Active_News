@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+**/.cache
+**/graphify-out
+.venv
+.git
+.swarm
+.claude-flow
+.playwright-mcp
+web
+server/.env
+.env*

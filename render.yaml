@@ -1,0 +1,16 @@
+# Render Blueprint: New > Blueprint > pick this repo. Free plan sleeps after 15 min without requests,
+# so ping https://<service>.onrender.com/api/health every 10 minutes to keep it awake.
+services:
+  - type: web
+    name: active-news-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: WEB_ORIGIN
+        sync: false # your Vercel URL, e.g. https://active-news.vercel.app (no trailing slash)
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=384 # free plan has 512 MB
