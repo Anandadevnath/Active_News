@@ -1,0 +1,402 @@
+{
+  "/home/raccoon/Downloads/Project/Active_News/package.json": {
+    "mtime": 1795630377.2212737,
+    "ast_hash": "be0eb71cbd5165f585b78052d4b16c47",
+    "semantic_hash": "be0eb71cbd5165f585b78052d4b16c47"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/pyproject.toml": {
+    "mtime": 1795790079.4550295,
+    "ast_hash": "724c390364ddf64505ecedfa0fbb3cce",
+    "semantic_hash": "724c390364ddf64505ecedfa0fbb3cce"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/package.json": {
+    "mtime": 1795725519.2807636,
+    "ast_hash": "a2cc2e82c122cb193fa572f3236b6b35",
+    "semantic_hash": "a2cc2e82c122cb193fa572f3236b6b35"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/app.ts": {
+    "mtime": 1795784780.548537,
+    "ast_hash": "2af0bfbdbc8c6d3621af843d38e69a66",
+    "semantic_hash": "2af0bfbdbc8c6d3621af843d38e69a66"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/config.ts": {
+    "mtime": 1795789965.3681257,
+    "ast_hash": "b13ee9658d1b56a366ea2e305e27fed6",
+    "semantic_hash": "b13ee9658d1b56a366ea2e305e27fed6"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/feed.ts": {
+    "mtime": 1795784780.548537,
+    "ast_hash": "82f46aa8df38b203d01117af2a44c0b6",
+    "semantic_hash": "82f46aa8df38b203d01117af2a44c0b6"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/heat.ts": {
+    "mtime": 1795630596.701284,
+    "ast_hash": "74fa93fc1c12170b1d7af401b57563e0",
+    "semantic_hash": "74fa93fc1c12170b1d7af401b57563e0"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/index.ts": {
+    "mtime": 1795731624.976257,
+    "ast_hash": "0795f1bf90107dbadb27677c12512281",
+    "semantic_hash": "0795f1bf90107dbadb27677c12512281"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/latest.ts": {
+    "mtime": 1795789965.370169,
+    "ast_hash": "0ce0921fe6d9472130a4592eb382ef06",
+    "semantic_hash": "0ce0921fe6d9472130a4592eb382ef06"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/media.ts": {
+    "mtime": 1795630595.912284,
+    "ast_hash": "fff6558452cc1f6aba5d6e07695ebba1",
+    "semantic_hash": "fff6558452cc1f6aba5d6e07695ebba1"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/search.ts": {
+    "mtime": 1795784780.548537,
+    "ast_hash": "cf7c1c7ad722eee5fa117a5072b9fc62",
+    "semantic_hash": "cf7c1c7ad722eee5fa117a5072b9fc62"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/arctic.ts": {
+    "mtime": 1795784780.5488772,
+    "ast_hash": "61a559afde4259305a201ff5f30df747",
+    "semantic_hash": "61a559afde4259305a201ff5f30df747"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/article.ts": {
+    "mtime": 1795784780.5489552,
+    "ast_hash": "335db5a31f6d26c0bf6f760abbf7bf5e",
+    "semantic_hash": "335db5a31f6d26c0bf6f760abbf7bf5e"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/bluesky.ts": {
+    "mtime": 1795784780.5490398,
+    "ast_hash": "34c68bc962b0043d8be2f51e8ae64cbc",
+    "semantic_hash": "34c68bc962b0043d8be2f51e8ae64cbc"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/fourchan.ts": {
+    "mtime": 1795725519.2837636,
+    "ast_hash": "a3a99203045afd0ffbc97d9c32e61338",
+    "semantic_hash": "a3a99203045afd0ffbc97d9c32e61338"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/hackernews.ts": {
+    "mtime": 1795784780.5491302,
+    "ast_hash": "0b329c4089466bdd6b2cc3a061b68a4c",
+    "semantic_hash": "0b329c4089466bdd6b2cc3a061b68a4c"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/http.ts": {
+    "mtime": 1795784780.54921,
+    "ast_hash": "34af85ae196f930e9d17ed39795c4cbd",
+    "semantic_hash": "34af85ae196f930e9d17ed39795c4cbd"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/index.ts": {
+    "mtime": 1795790000.752397,
+    "ast_hash": "12f6d05cd8db950d40c839bbca146823",
+    "semantic_hash": "12f6d05cd8db950d40c839bbca146823"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/interests.ts": {
+    "mtime": 1795790000.7526078,
+    "ast_hash": "065a8b3237f6012e273a7558df4304a1",
+    "semantic_hash": "065a8b3237f6012e273a7558df4304a1"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/lemmy.ts": {
+    "mtime": 1795784780.5493352,
+    "ast_hash": "e8cdb1e5857ce5e961267f2c36c65617",
+    "semantic_hash": "e8cdb1e5857ce5e961267f2c36c65617"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/mastodon.ts": {
+    "mtime": 1795784780.549398,
+    "ast_hash": "b09acfd8be1c854e573c0b11dcc2f35a",
+    "semantic_hash": "b09acfd8be1c854e573c0b11dcc2f35a"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/news.ts": {
+    "mtime": 1795731624.976893,
+    "ast_hash": "34360c08c955e9cdaaf4d164a5094b18",
+    "semantic_hash": "34360c08c955e9cdaaf4d164a5094b18"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/outlets.ts": {
+    "mtime": 1795731624.976893,
+    "ast_hash": "a4ff64850f3ba210306ceb30f003408e",
+    "semantic_hash": "a4ff64850f3ba210306ceb30f003408e"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/pager.ts": {
+    "mtime": 1795725519.2847636,
+    "ast_hash": "9d72923760a33c11ccd86c732bfba132",
+    "semantic_hash": "9d72923760a33c11ccd86c732bfba132"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/reach.ts": {
+    "mtime": 1795731624.976893,
+    "ast_hash": "fdb2ffd8e8190bb25e30d571b12b2adc",
+    "semantic_hash": "fdb2ffd8e8190bb25e30d571b12b2adc"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/reddit-api.ts": {
+    "mtime": 1795638152.6248538,
+    "ast_hash": "1c6a8b51a9bb3c465964a1b39056da32",
+    "semantic_hash": "1c6a8b51a9bb3c465964a1b39056da32"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/reddit-text.ts": {
+    "mtime": 1795641545.6054974,
+    "ast_hash": "1549726846e5215a90165f42100c3530",
+    "semantic_hash": "1549726846e5215a90165f42100c3530"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/reddit.ts": {
+    "mtime": 1795731624.976893,
+    "ast_hash": "9f548784a93efc6d5dc4f4c801884651",
+    "semantic_hash": "9f548784a93efc6d5dc4f4c801884651"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/spaced.ts": {
+    "mtime": 1795725519.2847636,
+    "ast_hash": "f9858ffb71f059fef6b3155f2afd0390",
+    "semantic_hash": "f9858ffb71f059fef6b3155f2afd0390"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/twitter.ts": {
+    "mtime": 1795731624.976893,
+    "ast_hash": "d2ee8527834cecbac80c80988f8c84df",
+    "semantic_hash": "d2ee8527834cecbac80c80988f8c84df"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/sources/youtube.ts": {
+    "mtime": 1795784780.549499,
+    "ast_hash": "7c1ce6f6a5d92f04c3ddfe070992e348",
+    "semantic_hash": "7c1ce6f6a5d92f04c3ddfe070992e348"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/store.ts": {
+    "mtime": 1795784780.5496082,
+    "ast_hash": "5793f0ecb812d7090796c329e1831ad2",
+    "semantic_hash": "5793f0ecb812d7090796c329e1831ad2"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/src/types.ts": {
+    "mtime": 1795790000.7518227,
+    "ast_hash": "632fb0cd84227ae156b82a58adf35b70",
+    "semantic_hash": "632fb0cd84227ae156b82a58adf35b70"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/test/arctic.test.ts": {
+    "mtime": 1795784780.5496738,
+    "ast_hash": "2d1e88a9c074a13d8c5976a86aa97f81",
+    "semantic_hash": "2d1e88a9c074a13d8c5976a86aa97f81"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/test/bluesky.test.ts": {
+    "mtime": 1795784780.5496738,
+    "ast_hash": "78bb0d32611c5cc2e6e5ecf2c2ed0f4f",
+    "semantic_hash": "78bb0d32611c5cc2e6e5ecf2c2ed0f4f"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/test/endless-sources.test.ts": {
+    "mtime": 1795789965.370752,
+    "ast_hash": "0a865fa865c6c2dca9789b865870ca3e",
+    "semantic_hash": "0a865fa865c6c2dca9789b865870ca3e"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/test/fediverse.test.ts": {
+    "mtime": 1795784780.5499382,
+    "ast_hash": "99f912dc7f5900385c03856422533aa5",
+    "semantic_hash": "99f912dc7f5900385c03856422533aa5"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/test/hn-live.test.ts": {
+    "mtime": 1795784780.5500035,
+    "ast_hash": "38f232e7aab8f572969048e10505820a",
+    "semantic_hash": "38f232e7aab8f572969048e10505820a"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/test/http.test.ts": {
+    "mtime": 1795784780.5500834,
+    "ast_hash": "c975fa37982800cb6df0f8b791aec0f1",
+    "semantic_hash": "c975fa37982800cb6df0f8b791aec0f1"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/test/latest.test.ts": {
+    "mtime": 1795790000.7532234,
+    "ast_hash": "249f2c8fba84e360b3b0c45aa1da2e5b",
+    "semantic_hash": "249f2c8fba84e360b3b0c45aa1da2e5b"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/test/lemmy-fixes.test.ts": {
+    "mtime": 1795784780.5500834,
+    "ast_hash": "6970c039789fa8f5aa56b7be88cf1922",
+    "semantic_hash": "6970c039789fa8f5aa56b7be88cf1922"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/test/mastodon-fixes.test.ts": {
+    "mtime": 1795784780.5500834,
+    "ast_hash": "44287f6c549f06b17ea7eb11e169a6f4",
+    "semantic_hash": "44287f6c549f06b17ea7eb11e169a6f4"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/test/media-heat.test.ts": {
+    "mtime": 1795632229.1853561,
+    "ast_hash": "a10dcc637f1488a3fa78da738c9d36fa",
+    "semantic_hash": "a10dcc637f1488a3fa78da738c9d36fa"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/test/outlets.test.ts": {
+    "mtime": 1795731624.976893,
+    "ast_hash": "eb6eac10fd59fb9ee631cd2632726e01",
+    "semantic_hash": "eb6eac10fd59fb9ee631cd2632726e01"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/test/parsers.test.ts": {
+    "mtime": 1795788135.1626291,
+    "ast_hash": "2ff5bffe258aa79b94a209d2a7f628d7",
+    "semantic_hash": "2ff5bffe258aa79b94a209d2a7f628d7"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/test/search-sources.test.ts": {
+    "mtime": 1795784780.550335,
+    "ast_hash": "c34546dfe4a052249fbecb4adbcbc7ce",
+    "semantic_hash": "c34546dfe4a052249fbecb4adbcbc7ce"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/test/store-app.test.ts": {
+    "mtime": 1795784780.5505984,
+    "ast_hash": "22ef5bd2eb92e860fd805b346269a124",
+    "semantic_hash": "22ef5bd2eb92e860fd805b346269a124"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/server/tsconfig.json": {
+    "mtime": 1795630597.225796,
+    "ast_hash": "5c1fab9f348ec8fdfc39522fcc430efd",
+    "semantic_hash": "5c1fab9f348ec8fdfc39522fcc430efd"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/skills-lock.json": {
+    "mtime": 1795731624.977893,
+    "ast_hash": "04c550d120e62aed54be05ac1da8b1ae",
+    "semantic_hash": "04c550d120e62aed54be05ac1da8b1ae"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/app/layout.tsx": {
+    "mtime": 1795790000.7531154,
+    "ast_hash": "d0a17c098caf7d921e10ce49c3066ecd",
+    "semantic_hash": "d0a17c098caf7d921e10ce49c3066ecd"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/app/page.tsx": {
+    "mtime": 1795630943.7220812,
+    "ast_hash": "5f1fbb2e1d3150569a6cefd08cfe2d63",
+    "semantic_hash": "5f1fbb2e1d3150569a6cefd08cfe2d63"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/components/Feed.tsx": {
+    "mtime": 1795784780.551191,
+    "ast_hash": "fb3066d7027c9d9b957b0c80939c77af",
+    "semantic_hash": "fb3066d7027c9d9b957b0c80939c77af"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/components/FeedList.tsx": {
+    "mtime": 1795784780.551191,
+    "ast_hash": "5d8e4800a36f2bb2f286b6a9c6e60871",
+    "semantic_hash": "5d8e4800a36f2bb2f286b6a9c6e60871"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/components/NewsCard.tsx": {
+    "mtime": 1795784780.5512738,
+    "ast_hash": "0d5f59dfcf3a3cc3042b5d48acb5a0e1",
+    "semantic_hash": "0d5f59dfcf3a3cc3042b5d48acb5a0e1"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/components/RisingShelf.tsx": {
+    "mtime": 1795784780.5512738,
+    "ast_hash": "ea216807bb4078e1715c73f6657d000e",
+    "semantic_hash": "ea216807bb4078e1715c73f6657d000e"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/components/ScrollRow.tsx": {
+    "mtime": 1795784780.5512738,
+    "ast_hash": "544169499db50f1aeecd2e54c37424d1",
+    "semantic_hash": "544169499db50f1aeecd2e54c37424d1"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/components/Sidebar.tsx": {
+    "mtime": 1795784780.5516846,
+    "ast_hash": "225b23f2b41cac840299c346d6df9ed6",
+    "semantic_hash": "225b23f2b41cac840299c346d6df9ed6"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/components/VideoPlayer.tsx": {
+    "mtime": 1795784780.5517623,
+    "ast_hash": "9915a25fc76ca88b2eb5d175e792510e",
+    "semantic_hash": "9915a25fc76ca88b2eb5d175e792510e"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/components/icons.tsx": {
+    "mtime": 1795784780.551826,
+    "ast_hash": "9a42158f16561349beaefa8c4a85dbcc",
+    "semantic_hash": "9a42158f16561349beaefa8c4a85dbcc"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/components/platformStyle.ts": {
+    "mtime": 1795790000.7528315,
+    "ast_hash": "4b953592929fcab83919f88996c21f00",
+    "semantic_hash": "4b953592929fcab83919f88996c21f00"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/eslint.config.mjs": {
+    "mtime": 1795630334.1167166,
+    "ast_hash": "dfa1f5f6a7037bf39dc510f30b180002",
+    "semantic_hash": "dfa1f5f6a7037bf39dc510f30b180002"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/lib/api.ts": {
+    "mtime": 1795784780.5519807,
+    "ast_hash": "5212ce3de1f56948b2bde6829e424415",
+    "semantic_hash": "5212ce3de1f56948b2bde6829e424415"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/lib/format.ts": {
+    "mtime": 1795631210.0378606,
+    "ast_hash": "7e2df48d13ca6bfa184073a5680a5990",
+    "semantic_hash": "7e2df48d13ca6bfa184073a5680a5990"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/lib/seen.ts": {
+    "mtime": 1795631994.408346,
+    "ast_hash": "20b221c102eea28385dda6c15a12ac58",
+    "semantic_hash": "20b221c102eea28385dda6c15a12ac58"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/lib/types.ts": {
+    "mtime": 1795790000.7527378,
+    "ast_hash": "102c7ef51fc2c558e5b1f7742db43c5f",
+    "semantic_hash": "102c7ef51fc2c558e5b1f7742db43c5f"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/lib/useLiveStatus.ts": {
+    "mtime": 1795631994.560346,
+    "ast_hash": "21d45afdb300f76dccde49a10d2d6456",
+    "semantic_hash": "21d45afdb300f76dccde49a10d2d6456"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/lib/useNow.ts": {
+    "mtime": 1795631209.9712949,
+    "ast_hash": "4723df9bde74bce619443119920fa8e3",
+    "semantic_hash": "4723df9bde74bce619443119920fa8e3"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/next.config.ts": {
+    "mtime": 1795731624.9790807,
+    "ast_hash": "abe4239601898a29082167d3ef5ce000",
+    "semantic_hash": "abe4239601898a29082167d3ef5ce000"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/package.json": {
+    "mtime": 1795641545.6064668,
+    "ast_hash": "b12fb0708ce1626274cbb864a18461f6",
+    "semantic_hash": "b12fb0708ce1626274cbb864a18461f6"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/postcss.config.mjs": {
+    "mtime": 1795641545.6064668,
+    "ast_hash": "239f3ebf717465dc636818a1a619398d",
+    "semantic_hash": "239f3ebf717465dc636818a1a619398d"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/tsconfig.json": {
+    "mtime": 1795630334.1182716,
+    "ast_hash": "02fc19ad21338c2ab820a70136310db4",
+    "semantic_hash": "02fc19ad21338c2ab820a70136310db4"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/DESIGN.md": {
+    "mtime": 1795638152.6248538,
+    "ast_hash": "817d4714455df807c33f23b362bf6bd4",
+    "semantic_hash": "817d4714455df807c33f23b362bf6bd4"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/README.md": {
+    "mtime": 1795790035.8231208,
+    "ast_hash": "4f6e7f975ed7f45e4e6222eee2bc91f1",
+    "semantic_hash": "4f6e7f975ed7f45e4e6222eee2bc91f1"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/docs/source-references.md": {
+    "mtime": 1795790079.453714,
+    "ast_hash": "bfe4f26c601fcd6a97898e909945c2ae",
+    "semantic_hash": "bfe4f26c601fcd6a97898e909945c2ae"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/render.yaml": {
+    "mtime": 1795785190.246693,
+    "ast_hash": "f48030bc49fc63bd247f91b382020075",
+    "semantic_hash": "f48030bc49fc63bd247f91b382020075"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/AGENTS.md": {
+    "mtime": 1795630334.118644,
+    "ast_hash": "c98dbebb744eadc1acc4b9f58bfe0f42",
+    "semantic_hash": "c98dbebb744eadc1acc4b9f58bfe0f42"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/README.md": {
+    "mtime": 1795630334.1167166,
+    "ast_hash": "f15aaa42d5d299d091b1171097ea56ad",
+    "semantic_hash": "f15aaa42d5d299d091b1171097ea56ad"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/docs/logo.svg": {
+    "mtime": 1795641751.01169,
+    "ast_hash": "5aa9128723e72221c2a275beebeae0c7",
+    "semantic_hash": "5aa9128723e72221c2a275beebeae0c7"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/docs/screenshot.png": {
+    "mtime": 1795641751.0130863,
+    "ast_hash": "e8fa233f03548329ed8e19adc9a995ba",
+    "semantic_hash": "e8fa233f03548329ed8e19adc9a995ba"
+  },
+  "/home/raccoon/Downloads/Project/Active_News/web/app/icon.svg": {
+    "mtime": 1795784780.5509067,
+    "ast_hash": "d650178f841977e6960ac4a58ca788ad",
+    "semantic_hash": "d650178f841977e6960ac4a58ca788ad"
+  }
+}
