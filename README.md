@@ -4,7 +4,7 @@
 
 ### Everything the internet is posting, on every interest, in one live feed
 
-YouTube · Reddit · Hacker News · 4chan · X / Twitter · Bluesky · Mastodon · Lemmy · Quora · news sites, merged into one endless, self-updating page.
+YouTube · Reddit · Hacker News · 4chan · X / Twitter · Bluesky · Mastodon · Lemmy · news sites, merged into one endless, self-updating page.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
@@ -25,7 +25,7 @@ YouTube · Reddit · Hacker News · 4chan · X / Twitter · Bluesky · Mastodon 
 
 ## Features
 
-- **Ten sources, one feed.** Stories from YouTube, Reddit, Hacker News, every work-safe 4chan board, X / Twitter, Bluesky, Mastodon, Lemmy, Quora and thousands of news sites, interleaved so no single platform takes over.
+- **Nine sources, one feed.** Stories from YouTube, Reddit, Hacker News, every work-safe 4chan board, X / Twitter, Bluesky, Mastodon, Lemmy and thousands of news sites, interleaved so no single platform takes over.
 - **Every interest, not just news.** 18 interests (news, tech, AI, gaming, music, movies & TV, anime, sports, science, money, food, fitness, travel, cars, fun, learning, art, books) drive what each platform is read for. Each refresh reads the next interests in turn, so all of them stay current.
 - **Live.** New Hacker News stories arrive through its official live stream within seconds. The server polls every other platform on its own timer (Bluesky every minute) and pushes changes to the browser over Server-Sent Events. New stories slide in at the top on their own, or behind an "↑ N new stories" button if you have scrolled down.
 - **Endless scroll.** Every platform pages deeper as you scroll, back through its archive, so the feed and search do not run out.
@@ -48,10 +48,9 @@ YouTube · Reddit · Hacker News · 4chan · X / Twitter · Bluesky · Mastodon 
 # 1. Node dependencies (server + web workspaces)
 npm install
 
-# 2. Python tools the server shells out to: yt-dlp (YouTube) and Scrapling (Quora)
+# 2. Python tool the server shells out to: yt-dlp (YouTube fallback)
 uv venv --python 3.13 .venv
 uv pip install --python .venv -e .
-.venv/bin/scrapling install
 
 # 3. Agent Reach (Reddit fallback, X / Twitter, web search)
 uv tool install https://github.com/Panniantong/Agent-Reach/releases/latest/download/agent-reach.zip
@@ -98,7 +97,6 @@ flowchart LR
     BS[Bluesky<br/>public API]
     MA[Mastodon<br/>mastodon.social API]
     LE[Lemmy<br/>lemmy.world API]
-    QU[Quora<br/>Scrapling / Exa]
     NW[News sites<br/>outlet feeds + Google News RSS]
   end
   Sources --> S[NewsStore<br/>pool, heat score, paging]
@@ -106,13 +104,12 @@ flowchart LR
   S -- SSE /api/stream --> W
 ```
 
-The project has three parts:
+The project has two parts:
 
 | Folder | Stack | Role |
 |---|---|---|
 | [`server/`](server) | Express 5, TypeScript | Polls every platform, keeps a pool of up to 20,000 stories per platform, scores heat, and serves the feed, search and live stream |
 | [`web/`](web) | Next.js 16, React 19, Tailwind CSS 4 | The page: the feed, filters, search, video players and endless scroll |
-| [`scripts/quora.py`](scripts/quora.py) | Python, Scrapling | Quora scraper; Scrapling is Python-only, so the server runs this script |
 
 ### Where the news comes from
 
@@ -126,7 +123,6 @@ The project has three parts:
 | Bluesky | Bluesky's "What's Hot" feed, page after page, plus the top posts of one interest per refresh (public API, no login); adult-labelled posts are dropped | Bluesky's own search: the 100 best posts (hot), or newest first page after page (latest) | 1 min |
 | Mastodon | Trending posts across the fediverse, then each interest's hashtags, plus one interest per refresh (public API, no login); sensitive posts and content warnings are dropped | The query's hashtags ("one piece" -> #onepiece, #one, #piece), newest first, keeping posts with its words | 2 min |
 | Lemmy | The Hot list of every community lemmy.world knows, page after page (public API, no login); NSFW posts and communities are dropped | Lemmy's own search, top of all time (hot) or newest first (latest) | 2 min |
-| Quora | World News topic (Scrapling), then Exa web search, one interest per refresh | 10 phrasings of the query's keywords, up to 100 results each, duplicates removed | 30 min |
 | News sites | The outlets' own RSS / Atom feeds (41 feeds, e.g. BBC, NYT, The Verge, IGN, Variety, Space.com), with direct links, summaries and pictures: world news plus one interest per refresh; scrolling reads every interest's outlets, then Google News one week at a time going back | [Google News](https://news.google.com) RSS: the most relevant (or today's) articles, then one week at a time going back | 5 min |
 
 The interests, their subreddits and news outlets live in [`server/src/sources/interests.ts`](server/src/sources/interests.ts); refresh intervals in [`server/src/sources/index.ts`](server/src/sources/index.ts).
@@ -150,18 +146,16 @@ Set these as environment variables, or put them in `server/.env` (copy [`server/
 | `WEB_ORIGIN` | `http://localhost:3000` | Allowed CORS origin |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | API address used by the site |
 | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | unset | A Reddit "script" app for the official API (live `hot` list) |
-| `EXA_API_KEY` | unset | Your own [Exa](https://exa.ai) key for Quora, instead of Agent Reach's shared, rate-limited search |
-| `YTDLP_BIN`, `PYTHON_BIN`, `AGENT_REACH_BIN` | `.venv/bin/*`, then `PATH` | Paths to the CLI tools |
+| `YTDLP_BIN`, `AGENT_REACH_BIN` | `.venv/bin/*`, then `PATH` | Paths to the CLI tools |
 
 ## Known limits
 
 - **Reddit** blocks many networks (VPNs, shared ISP addresses) with HTTP 403. The server then reads the Arctic Shift and PullPush archives. Arctic Shift scores are snapshots taken when a post is archived, so the newest posts show low points; PullPush is about six weeks behind.
 - **X / Twitter** search needs you logged in to x.com in Agent Reach's own browser (`agent-reach login twitter`), and that login expires. When it is missing, X returns no results and Agent Reach reports "UPSTREAM_BROKEN: OpenCLI finished but returned no items", which looks like an outage but is a login problem.
 - **News sites** in the feed come from the outlets' own feeds (listed per interest in [`interests.ts`](server/src/sources/interests.ts)); some outlets (the Guardian, ESPN) refuse automated readers and are left out. News search and the deep archive use Google News RSS: those cards show the headline, publisher and time but no image, and links open through news.google.com. Google limits quick bursts (HTTP 429), so requests are spaced 2 s apart and News pauses for 2 minutes after a 429.
-- **Facebook, Instagram, TikTok and Threads** are not included: they need a logged-in account and their rules forbid automated reading.
+- **Quora, Facebook, Instagram, TikTok and Threads** are not included. They block automated readers or need a logged-in account, and the only ways around that break their rules or need a paid API.
 - **Mastodon** full-text search needs a login, so search reads hashtags: a post about the topic without a matching hashtag is not found.
 - **Bluesky** videos are HLS streams, which browsers cannot play without a player library, so their cards show the thumbnail and open the post. Bluesky's search cursor needs a login, so deeper search pages ask for posts older than the last page instead.
-- **Quora** usually blocks automated browsers, so it comes from web search. Each search page spends Exa credit.
 - **4chan archives** cover 34 of the ~50 work-safe boards; the others (for example /tv/, /sp/, /lit/, /sci/) are searched in live threads only.
 - **Shared services.** Arctic Shift, PullPush and the 4chan archives are run by volunteers; the server limits how often it calls them, and they sometimes answer slowly.
 - **YouTube** results lean toward your IP's region and language.

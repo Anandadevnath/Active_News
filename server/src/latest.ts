@@ -26,7 +26,7 @@ interface Stream {
 /**
  * Newest-first merge of every platform's results for one search, page after page. Each platform pages back in
  * time on its own; a story is shown only once every platform has been read back to its time, so a later page
- * never brings stories newer than an earlier one. Undated stories (Quora) close each page, a few at a time.
+ * never brings stories newer than an earlier one. Undated stories close each page, a few at a time.
  */
 export class LatestMerge {
   private readonly streams: Map<StreamKey, Stream>;

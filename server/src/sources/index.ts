@@ -5,7 +5,6 @@ import { fetchHackerNews, searchHackerNews, watchHackerNews } from "./hackernews
 import { fetchLemmy, searchLemmy } from "./lemmy.js";
 import { fetchMastodon, searchMastodon } from "./mastodon.js";
 import { fetchNews, searchNews } from "./news.js";
-import { fetchQuora, searchQuora } from "./quora.js";
 import { fetchReddit, searchReddit } from "./reddit.js";
 import { fetchTwitter, searchTwitter } from "./twitter.js";
 import { fetchYouTube, searchYouTube } from "./youtube.js";
@@ -35,6 +34,5 @@ export const SOURCES: Record<Platform, SourceDef> = {
   bluesky: { fetch: fetchBluesky, search: searchBluesky, intervalMs: 1 * MINUTE }, // public API, no login; one request per refresh
   mastodon: { fetch: fetchMastodon, search: searchMastodon, intervalMs: 2 * MINUTE }, // mastodon.social public API
   lemmy: { fetch: fetchLemmy, search: searchLemmy, intervalMs: 2 * MINUTE }, // lemmy.world public API
-  quora: { fetch: fetchQuora, search: searchQuora, intervalMs: 30 * MINUTE }, // web search spends Exa credit
   news: { fetch: fetchNews, search: searchNews, intervalMs: 5 * MINUTE }, // Google News RSS, spaced 2 s apart
 };

@@ -10,7 +10,6 @@ export const ACCENT: Record<Platform, { text: string; border: string; tint: stri
   bluesky: { text: "text-bluesky", border: "border-bluesky", tint: "bg-bluesky/10" },
   mastodon: { text: "text-mastodon", border: "border-mastodon", tint: "bg-mastodon/10" },
   lemmy: { text: "text-lemmy", border: "border-lemmy", tint: "bg-lemmy/10" },
-  quora: { text: "text-quora", border: "border-quora", tint: "bg-quora/10" },
   news: { text: "text-news", border: "border-news", tint: "bg-news/10" },
 };
 
@@ -26,6 +25,5 @@ export const MARK: Record<Platform, string> = {
   bluesky: "Bs",
   mastodon: "M",
   lemmy: "L",
-  quora: "Q",
   news: "N",
 };

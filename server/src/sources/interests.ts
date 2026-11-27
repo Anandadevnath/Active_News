@@ -1,6 +1,6 @@
 /**
  * What people come to each platform for. Every source reads all of them: YouTube searches each `query`,
- * X and Quora search it as a topic, Reddit reads the `subreddits` (all work-safe, 300k+ members, checked
+ * X searches it as a topic, Reddit reads the `subreddits` (all work-safe, 300k+ members, checked
  * against the Arctic Shift subreddit list).
  */
 export interface Interest {

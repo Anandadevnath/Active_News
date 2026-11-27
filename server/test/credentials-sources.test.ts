@@ -1,24 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { config } from "../src/config.js";
-import { parseExaResults } from "../src/sources/exa.js";
 import { redditApiGet } from "../src/sources/reddit-api.js";
 
 afterEach(() => vi.unstubAllGlobals());
-
-describe("Exa results", () => {
-  it("keeps titled results and maps them to stories", () => {
-    const items = parseExaResults(
-      [
-        { title: "Why did X happen?", url: "https://www.quora.com/Why", publishedDate: "2026-11-25T00:00:00Z", text: "Because." },
-        { title: null, url: "https://www.quora.com/untitled" },
-      ],
-      "quora",
-    );
-    expect(items).toHaveLength(1);
-    expect(items[0]).toMatchObject({ platform: "quora", title: "Why did X happen?", description: "Because.", publishedAt: "2026-11-25T00:00:00Z" });
-  });
-});
 
 describe("Reddit official API", () => {
   it("gets an app-only token once and sends it as a bearer", async () => {

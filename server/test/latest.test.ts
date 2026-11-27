@@ -48,11 +48,11 @@ describe("Latest search merge", () => {
   it("closes each page with a few undated stories and returns the same page when asked again", async () => {
     const merge = new LatestMerge({
       reddit: pagesOf(range("r", 0, 25, "reddit")),
-      quora: pagesOf(Array.from({ length: 15 }, (_, i) => story(`q${i}`, null, "quora"))),
+      lemmy: pagesOf(Array.from({ length: 15 }, (_, i) => story(`q${i}`, null, "lemmy"))),
     });
     const first = await merge.page(0);
     expect(first.items.slice(0, 25).every((i) => i.platform === "reddit")).toBe(true);
-    expect(first.items.slice(25).map((i) => i.platform)).toEqual(Array(10).fill("quora"));
+    expect(first.items.slice(25).map((i) => i.platform)).toEqual(Array(10).fill("lemmy"));
     expect(await merge.page(0)).toBe(first);
   });
 

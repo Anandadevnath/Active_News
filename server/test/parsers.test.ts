@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { parseCatalog } from "../src/sources/fourchan.js";
 import { parseMetaDescription } from "../src/sources/article.js";
 import { parseHnItem } from "../src/sources/hackernews.js";
-import { parseQuoraOutput } from "../src/sources/quora.js";
 import { parseReachOutput } from "../src/sources/reach.js";
 import { parseListing } from "../src/sources/reddit.js";
 import { parseEntry, relativeToIso, videoToEntry } from "../src/sources/youtube.js";
@@ -96,13 +95,6 @@ describe("agent reach", () => {
   it("turns an error payload into a readable error", () => {
     const out = JSON.stringify({ ok: false, error: { code: "NEED_LOGIN", message: "log in" } });
     expect(() => parseReachOutput(out, "twitter")).toThrow("NEED_LOGIN: log in");
-  });
-});
-
-describe("quora", () => {
-  it("parses items and errors from the python script", () => {
-    expect(parseQuoraOutput('{"items":[{"title":"Why?","url":"https://www.quora.com/Why"}]}')[0]).toMatchObject({ platform: "quora", title: "Why?" });
-    expect(() => parseQuoraOutput('{"error":"HTTP 403"}')).toThrow("HTTP 403");
   });
 });
 

@@ -16,7 +16,6 @@ vi.mock("../src/sources/http.js", () => ({
 }));
 
 const { fetchTwitter } = await import("../src/sources/twitter.js");
-const { fetchQuora } = await import("../src/sources/quora.js");
 const { INTERESTS } = await import("../src/sources/interests.js");
 const TOPICS = INTERESTS.map((i) => i.query);
 
@@ -32,13 +31,5 @@ describe("endless paging for sources without real cursors", () => {
     expect(runReach.mock.calls[1]![1]).toContain(TOPICS[0]);
     expect(first.next).toBe("1");
     expect(wrapped.next).toBe(String(TOPICS.length + 1));
-  });
-
-  it("Quora deeper pages search a new topic and never return a null cursor", async () => {
-    const first = await fetchQuora(null);
-    expect(first.next).toBe("2");
-    const deeper = await fetchQuora("3");
-    expect(runReach.mock.calls.at(-1)![1].join(" ")).toContain(TOPICS[3]!);
-    expect(deeper.next).toBe("4");
   });
 });
