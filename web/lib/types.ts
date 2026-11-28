@@ -1,13 +1,13 @@
 // Browser-side copy of server/src/types.ts. Keep the two in sync.
 
-export const PLATFORMS = ["youtube", "reddit", "hackernews", "4chan", "twitter", "bluesky", "mastodon", "lemmy", "news"] as const;
+export const PLATFORMS = ["youtube", "reddit", "hackernews", "4chan", "twitter", "bluesky", "mastodon", "lemmy", "news", "instagram", "facebook", "tiktok"] as const;
 export type Platform = (typeof PLATFORMS)[number];
 export type Filter = Platform | "all";
 
 /** hot: heat, shuffled per visit; latest: newest first. Keep in sync with server/src/types.ts. */
 export type Sort = "hot" | "latest";
 
-export type Video = { kind: "youtube"; id: string } | { kind: "file"; url: string };
+export type Video = { kind: "youtube"; id: string } | { kind: "file"; url: string } | { kind: "tiktok"; id: string };
 
 export interface Metrics {
   score?: number;
@@ -75,6 +75,9 @@ export const PLATFORM_LABEL: Record<Platform, string> = {
   mastodon: "Mastodon",
   lemmy: "Lemmy",
   news: "News sites",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  tiktok: "TikTok",
 };
 
 /** Topic chips above the feed: each searches every platform for its query (labels match the server's interests). */
@@ -100,10 +103,15 @@ export const TOPICS: readonly { label: string; query: string }[] = [
 ];
 
 /** What the user can do when a platform fails, matched against the server's error text. */
-export function fixHint(error: string): string | null {
+export function fixHint(error: string, platform?: Platform): string | null {
+  if (/NEED_LOGIN.*facebook/i.test(error))
+    return "Log in once: run `agent-reach login facebook` in a terminal and log in to facebook.com in the window that opens.";
+  if (/NEED_LOGIN.*instagram/i.test(error))
+    return "Log in once: run `agent-reach login instagram` in a terminal and log in to instagram.com in the window that opens.";
   if (error.includes("NEED_LOGIN")) return "Log in once: run `agent-reach login twitter` in a terminal.";
-  // X answers searches with nothing (not a login error) when the Agent Reach browser is logged out
-  if (error.includes("returned no items") || error.includes("UPSTREAM_BROKEN"))
+  // X answers searches with nothing (not a login error) when the Agent Reach browser is logged out;
+  // Facebook's empty results use the same words, so this hint is scoped to X.
+  if (platform === "twitter" && (error.includes("returned no items") || error.includes("UPSTREAM_BROKEN")))
     return "X returned nothing: its search needs a login. Run `agent-reach login twitter` in a terminal and log in to x.com in the window that opens.";
   if (error.includes("Arctic Shift")) return "Reddit is refusing this network and the Reddit archive did not answer. It retries on its own.";
   if (error.includes("Google News")) return "Google News is limiting requests from this network. It retries on its own in about 2 minutes.";

@@ -1,4 +1,5 @@
 const YOUTUBE_ID_RE = /^[\w-]{11}$/;
+const TIKTOK_ID_RE = /^\d{10,}$/;
 const UNITS: [number, string][] = [
   [60, "s"],
   [60, "m"],
@@ -29,4 +30,8 @@ export function safeUrl(url: string | null | undefined): string | undefined {
 
 export function isYoutubeId(id: string): boolean {
   return YOUTUBE_ID_RE.test(id);
+}
+
+export function isTikTokId(id: string): boolean {
+  return TIKTOK_ID_RE.test(id);
 }

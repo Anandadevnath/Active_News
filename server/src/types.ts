@@ -1,9 +1,9 @@
 // Keep in sync with web/lib/types.ts (the browser-side copy).
 
-export const PLATFORMS = ["youtube", "reddit", "hackernews", "4chan", "twitter", "bluesky", "mastodon", "lemmy", "news"] as const;
+export const PLATFORMS = ["youtube", "reddit", "hackernews", "4chan", "twitter", "bluesky", "mastodon", "lemmy", "news", "instagram", "facebook", "tiktok"] as const;
 export type Platform = (typeof PLATFORMS)[number];
 
-export type Video = { kind: "youtube"; id: string } | { kind: "file"; url: string };
+export type Video = { kind: "youtube"; id: string } | { kind: "file"; url: string } | { kind: "tiktok"; id: string };
 
 export interface Metrics {
   score?: number;

@@ -11,7 +11,7 @@ const csp = [
   "img-src 'self' https: data:",
   "media-src https:",
   "font-src 'self'",
-  "frame-src https://www.youtube-nocookie.com",
+  "frame-src https://www.youtube-nocookie.com https://www.tiktok.com",
   `connect-src 'self' ${apiUrl}${isDev ? " ws:" : ""}`,
   "object-src 'none'",
   "base-uri 'self'",

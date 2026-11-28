@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -15,6 +16,12 @@ function venvOr(name: string): string {
   return existsSync(local) ? local : name;
 }
 
+/** Agent Reach installs opencli under its own npm prefix, which is not on the server's PATH. */
+function openCliOr(): string {
+  const bundled = path.join(os.homedir(), ".agent-reach", "tools", "npm-global", "bin", "opencli");
+  return existsSync(bundled) ? bundled : "opencli";
+}
+
 function intEnv(name: string, fallback: number): number {
   const value = Number(process.env[name]);
   return Number.isInteger(value) && value > 0 ? value : fallback;
@@ -26,6 +33,7 @@ export const config = {
   webOrigin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
   ytDlpBin: process.env.YTDLP_BIN ?? venvOr("yt-dlp"),
   agentReachBin: process.env.AGENT_REACH_BIN ?? "agent-reach",
+  opencliBin: process.env.OPENCLI_BIN ?? openCliOr(),
   snapshotFile: path.join(ROOT, "server", ".cache", "pool.json"), // stories kept across restarts (git-ignored)
   /** Optional: a Reddit "script" app (reddit.com/prefs/apps) for the official API. */
   redditClientId: process.env.REDDIT_CLIENT_ID ?? "",

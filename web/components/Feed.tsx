@@ -345,7 +345,7 @@ export function Feed() {
 
           {selected?.error && (
             <div role="alert" className="mb-6 rounded-xl border border-live/30 bg-live/10 px-5 py-4 text-sm text-zinc-200">
-              <strong className="text-white">{PLATFORM_LABEL[selected.platform]} could not be reached.</strong> {fixHint(selected.error) ?? ""}
+              <strong className="text-white">{PLATFORM_LABEL[selected.platform]} could not be reached.</strong> {fixHint(selected.error, selected.platform) ?? ""}
               <details className="mt-2">
                 <summary className="cursor-pointer text-zinc-400 hover:text-zinc-200">Details</summary>
                 <code className="mt-2 block font-mono text-xs break-all whitespace-pre-wrap text-zinc-400">{selected.error}</code>

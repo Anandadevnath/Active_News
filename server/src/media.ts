@@ -3,6 +3,7 @@ import type { Video } from "./types.js";
 export const DESCRIPTION_MAX = 280;
 const YOUTUBE_ID_RE = /^[\w-]{11}$/;
 const YOUTUBE_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "www.youtu.be"]);
+const TIKTOK_VIDEO_RE = /^https:\/\/(?:www\.)?tiktok\.com\/@[\w.-]+\/video\/(\d+)(?:[?#]|$)/i;
 const VIDEO_FILE_RE = /^https:\/\/[^\s"']+\.(mp4|webm)(\?[^\s"']*)?$/i;
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', "#039": "'", "#39": "'", nbsp: " " };
 
@@ -44,6 +45,11 @@ export function isVideoFile(url: unknown): url is string {
   return typeof url === "string" && VIDEO_FILE_RE.test(url);
 }
 
+/** The numeric id of a tiktok.com/@user/video/<id> page; photo posts (and any other link) give null. */
+export function tikTokId(url: string | null | undefined): string | null {
+  return url ? (TIKTOK_VIDEO_RE.exec(url)?.[1] ?? null) : null;
+}
+
 /** Depth-first search of a JSON blob for the first https mp4/webm URL. */
 export function findVideoFile(raw: unknown): string | null {
   if (isVideoFile(raw)) return raw;
@@ -70,8 +76,10 @@ export function findNumber(raw: unknown, keys: readonly string[]): number | unde
 }
 
 export function videoFor(url: string, fileUrl?: string | null): Video | null {
-  const id = youtubeId(url);
-  if (id) return { kind: "youtube", id };
+  const youtube = youtubeId(url);
+  if (youtube) return { kind: "youtube", id: youtube };
+  const tiktok = tikTokId(url);
+  if (tiktok) return { kind: "tiktok", id: tiktok };
   return fileUrl && isVideoFile(fileUrl) ? { kind: "file", url: fileUrl } : null;
 }
 

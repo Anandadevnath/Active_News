@@ -37,6 +37,55 @@ export function topicAt(step: number): string {
   return INTERESTS[step % INTERESTS.length]!.query;
 }
 
+/**
+ * Instagram accounts the feed reads (well-known, public, work-safe). Rotation: one account per
+ * refresh and one per deeper page, like the interest rotation above. Every Instagram read needs a
+ * login (`agent-reach login instagram`); a dead or private handle just fails that one fetch.
+ * Checked 2026-11-28.
+ */
+export const INSTAGRAM_ACCOUNTS: readonly string[] = [
+  "nasa",
+  "nationalgeographic",
+  "bbcnews",
+  "cnn",
+  "theverge",
+  "mkbhd",
+  "openai",
+  "googledeepmind",
+  "nintendo",
+  "playstation",
+  "xbox",
+  "marvelstudios",
+  "netflix",
+  "billboard",
+  "spotify",
+  "crunchyroll",
+  "nba",
+  "espn",
+  "forbes",
+  "bonappetitmag",
+  "foodnetwork",
+  "nike",
+  "cntraveler",
+  "formula1",
+  "9gag",
+  "ted",
+];
+
+/** TikTok accounts read through yt-dlp for deeper feed pages (`explore` covers live trending). Checked 2026-11-28. */
+export const TIKTOK_ACCOUNTS: readonly string[] = [
+  "nasa",
+  "nintendo",
+  "nba",
+  "netflix",
+  "redbull",
+  "espn",
+  "billboard",
+  "nationalgeographic",
+  "khaby00",
+  "gordonramsay",
+];
+
 /** Parse a step cursor; null (the live first page) is step 0. */
 export function stepOf(cursor: string | null): number {
   const n = Number(cursor ?? 0);

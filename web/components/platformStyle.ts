@@ -11,6 +11,9 @@ export const ACCENT: Record<Platform, { text: string; border: string; tint: stri
   mastodon: { text: "text-mastodon", border: "border-mastodon", tint: "bg-mastodon/10" },
   lemmy: { text: "text-lemmy", border: "border-lemmy", tint: "bg-lemmy/10" },
   news: { text: "text-news", border: "border-news", tint: "bg-news/10" },
+  instagram: { text: "text-instagram", border: "border-instagram", tint: "bg-instagram/10" },
+  facebook: { text: "text-facebook", border: "border-facebook", tint: "bg-facebook/10" },
+  tiktok: { text: "text-tiktok", border: "border-tiktok", tint: "bg-tiktok/10" },
 };
 
 export const FOCUS = "outline-none focus-visible:ring-2 focus-visible:ring-sky-400/80 focus-visible:ring-offset-2 focus-visible:ring-offset-ink";
@@ -26,4 +29,7 @@ export const MARK: Record<Platform, string> = {
   mastodon: "M",
   lemmy: "L",
   news: "N",
+  instagram: "IG",
+  facebook: "F",
+  tiktok: "TT",
 };

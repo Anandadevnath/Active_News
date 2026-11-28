@@ -21,9 +21,10 @@ interface NewsCardProps {
 
 export function metricsText(item: NewsItem): string {
   const { score, comments, views } = item.metrics;
+  const likesPlatform = item.platform === "twitter" || item.platform === "instagram" || item.platform === "tiktok";
   return [
     views ? `${compact(views)} views` : null,
-    score ? `${compact(score)} ${item.platform === "twitter" ? "likes" : "points"}` : null,
+    score ? `${compact(score)} ${likesPlatform ? "likes" : "points"}` : null,
     comments ? `${compact(comments)} ${item.platform === "4chan" ? "replies" : "comments"}` : null,
   ]
     .filter(Boolean)

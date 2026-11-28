@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- thumbnails come from many external hosts */
 import { useState } from "react";
 
-import { isYoutubeId, safeUrl } from "@/lib/format";
+import { isTikTokId, isYoutubeId, safeUrl } from "@/lib/format";
 import type { Video } from "@/lib/types";
 
 import { PlayIcon } from "./icons";
@@ -17,6 +17,13 @@ interface VideoPlayerProps {
 }
 
 export const MEDIA = "block aspect-video w-full overflow-hidden rounded-xl bg-white/[0.04] ring-1 ring-white/10";
+
+/** The click-to-load iframe for YouTube and TikTok videos; null for kinds without an embed. */
+function embedSrc(video: Video): string | null {
+  if (video.kind === "youtube") return `https://www.youtube-nocookie.com/embed/${video.id}?autoplay=1`;
+  if (video.kind === "tiktok") return `https://www.tiktok.com/player/v1/${video.id}?autoplay=1&music_info=1&description=1`;
+  return null;
+}
 
 export function VideoPlayer({ video, thumbnail, title, onPlayingChange }: VideoPlayerProps) {
   const [open, setOpen] = useState(false);
@@ -39,7 +46,9 @@ export function VideoPlayer({ video, thumbnail, title, onPlayingChange }: VideoP
     );
   }
 
-  if (!isYoutubeId(video.id)) return null;
+  const src = embedSrc(video);
+  const playable = src !== null && (video.kind === "youtube" ? isYoutubeId(video.id) : isTikTokId(video.id));
+  if (!playable || src === null) return null;
 
   if (!open) {
     return (
@@ -69,7 +78,7 @@ export function VideoPlayer({ video, thumbnail, title, onPlayingChange }: VideoP
     <div className="relative">
       <iframe
         className={MEDIA}
-        src={`https://www.youtube-nocookie.com/embed/${video.id}?autoplay=1`}
+        src={src}
         title={title}
         allow="autoplay; encrypted-media; picture-in-picture"
         referrerPolicy="strict-origin-when-cross-origin"

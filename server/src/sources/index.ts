@@ -1,11 +1,14 @@
 import type { Page, Platform, RawItem, Sort } from "../types.js";
 import { fetchBluesky, searchBluesky } from "./bluesky.js";
+import { fetchFacebook, searchFacebook } from "./facebook.js";
 import { fetchFourchan, searchFourchan } from "./fourchan.js";
 import { fetchHackerNews, searchHackerNews, watchHackerNews } from "./hackernews.js";
+import { fetchInstagram } from "./instagram.js";
 import { fetchLemmy, searchLemmy } from "./lemmy.js";
 import { fetchMastodon, searchMastodon } from "./mastodon.js";
 import { fetchNews, searchNews } from "./news.js";
 import { fetchReddit, searchReddit } from "./reddit.js";
+import { fetchTikTok } from "./tiktok.js";
 import { fetchTwitter, searchTwitter } from "./twitter.js";
 import { fetchYouTube, searchYouTube } from "./youtube.js";
 
@@ -35,4 +38,7 @@ export const SOURCES: Record<Platform, SourceDef> = {
   mastodon: { fetch: fetchMastodon, search: searchMastodon, intervalMs: 2 * MINUTE }, // mastodon.social public API
   lemmy: { fetch: fetchLemmy, search: searchLemmy, intervalMs: 2 * MINUTE }, // lemmy.world public API
   news: { fetch: fetchNews, search: searchNews, intervalMs: 5 * MINUTE }, // Google News RSS, spaced 2 s apart
+  instagram: { fetch: fetchInstagram, intervalMs: 5 * MINUTE, readAhead: 30 }, // one account per fetch; needs `agent-reach login instagram`
+  facebook: { fetch: fetchFacebook, search: searchFacebook, intervalMs: 10 * MINUTE, readAhead: 60 }, // each fetch is one ~15-20 s browser search
+  tiktok: { fetch: fetchTikTok, intervalMs: 3 * MINUTE, readAhead: 30 }, // explore = live trending; deeper pages read accounts via yt-dlp
 };
